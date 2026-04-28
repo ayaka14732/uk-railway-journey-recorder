@@ -25,11 +25,22 @@
 
 - [x] Investigate and fix 500 error when clicking the search button in the compact SBB ledger UI.
 - [x] Validate `/api/search-services` with the current default MKC → EUS request after the fix.
-- [ ] Save a new checkpoint after resolving the 500 error.
+- [x] Save a new checkpoint after resolving the 500 error.
 
 ## Token Reconnection After 500 Report
 
 - [x] Store the user-provided RTT token in local backend environment configuration without exposing it in user-facing output.
 - [x] Restart the FastAPI backend and confirm `/api/health` reports RTT configured.
 - [x] Validate the search button path through `/api/search-services` and confirm it returns candidate services instead of 500.
-- [ ] Save a corrected checkpoint after passing TypeScript/build checks.
+- [x] Save a corrected checkpoint after passing TypeScript/build checks.
+
+## Plain English Interface Revision
+
+- [x] Remove all non-English interface text and remove language-switching UI.
+- [x] Replace the high-contrast presentation with a plain, normal, simple web page while keeping the red/black/white colour family.
+- [x] Remove animations and avoid advanced decorative CSS.
+- [x] Remove platform information from candidate and history displays.
+- [x] Show both booked/actual departure and booked/actual arrival points where data is available.
+- [x] Show departure delay and arrival delay as separate values.
+- [x] Remove the service detail panel; clicking Add should save the selected journey directly to the database.
+- [x] Validate search, direct add, history refresh, TypeScript check, and production build before saving a checkpoint.

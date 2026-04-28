@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
@@ -265,7 +266,9 @@ def normalise_candidate(item: dict[str, Any], requested_origin: str, requested_d
     metadata = item.get("scheduleMetadata") or {}
     operator = metadata.get("operator") or {}
     dep = (item.get("temporalData") or {}).get("departure") or temporal_for_public_stop(item)
-    platform = ((item.get("locationMetadata") or {}).get("platform") or {}).get("actual") or ((item.get("locationMetadata") or {}).get("platform") or {}).get("planned")
+    destinations = item.get("destination") or []
+    destination_stop = destinations[0] if destinations else {}
+    arr = ((destination_stop.get("temporalData") or {}).get("arrival") or temporal_for_public_stop(destination_stop)) if destination_stop else {}
     return {
         "identity": metadata.get("identity"),
         "uniqueIdentity": metadata.get("uniqueIdentity"),
@@ -281,8 +284,11 @@ def normalise_candidate(item: dict[str, Any], requested_origin: str, requested_d
         "actualDeparture": actual_time(dep),
         "departureDisplay": display_time(actual_time(dep) or planned_time(dep)),
         "departureLatenessMinutes": lateness(dep),
-        "platform": platform,
-        "isCancelled": bool(dep.get("isCancelled")),
+        "plannedArrival": planned_time(arr),
+        "actualArrival": actual_time(arr),
+        "arrivalDisplay": display_time(actual_time(arr) or planned_time(arr)),
+        "arrivalLatenessMinutes": lateness(arr),
+        "isCancelled": bool(dep.get("isCancelled") or arr.get("isCancelled")),
         "raw": item,
     }
 
@@ -294,6 +300,29 @@ def find_stop(locations: list[dict[str, Any]], requested_code: str) -> Optional[
         if wanted in code_set(location):
             return stop
     return None
+
+
+def enrich_candidate_with_detail(candidate: dict[str, Any], boarded: str, alighted: str) -> dict[str, Any]:
+    if candidate.get("plannedArrival") or candidate.get("actualArrival"):
+        return candidate
+    identity = candidate.get("identity")
+    departure_date = candidate.get("departureDate")
+    if not identity or not departure_date:
+        return candidate
+    try:
+        payload = rtt_get("/gb-nr/service", {"identity": identity, "departureDate": departure_date})
+        detail = normalise_detail(payload, boarded, alighted)
+    except HTTPException:
+        return candidate
+    candidate.update(
+        {
+            "plannedArrival": detail.get("plannedArrival"),
+            "actualArrival": detail.get("actualArrival"),
+            "arrivalDisplay": detail.get("arrivalDisplay"),
+            "arrivalLatenessMinutes": detail.get("arrivalLatenessMinutes"),
+        }
+    )
+    return candidate
 
 
 def normalise_detail(payload: dict[str, Any], boarded: str, alighted: str) -> dict[str, Any]:
@@ -435,6 +464,16 @@ def search_services(request: SearchRequest) -> dict[str, Any]:
     services = payload.get("services") or []
     candidates = [normalise_candidate(item, request.originCrs, request.destinationCrs) for item in services]
     candidates = [item for item in candidates if item.get("identity")]
+    if candidates:
+        with ThreadPoolExecutor(max_workers=min(6, len(candidates))) as executor:
+            futures = {
+                executor.submit(enrich_candidate_with_detail, candidate, request.originCrs, request.destinationCrs): index
+                for index, candidate in enumerate(candidates)
+            }
+            enriched = list(candidates)
+            for future in as_completed(futures):
+                enriched[futures[future]] = future.result()
+            candidates = enriched
     return {
         "query": request.model_dump(),
         "candidateCount": len(candidates),
