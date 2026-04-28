@@ -47,9 +47,10 @@ def sqlite_path_from_env() -> Path:
 
 
 DB_PATH = sqlite_path_from_env()
-RTT_BASE_URL = os.getenv("RTT_BASE_URL", "https://data.rtt.io/api/v1").rstrip("/")
+RTT_BASE_URL = os.getenv("RTT_BASE_URL", "https://data.rtt.io").rstrip("/")
 RTT_API_VERSION = os.getenv("RTT_API_VERSION", "2026-04-09")
 RTT_TOKEN = os.getenv("RTT_API_TOKEN", "").strip()
+RTT_ACCESS_TOKEN_CACHE: Optional[str] = None
 
 FALLBACK_STATIONS = [
     {"crs": "MKC", "name": "Milton Keynes Central", "longCode": "MILTONK"},
@@ -128,17 +129,46 @@ def startup() -> None:
     init_db()
 
 
-def rtt_headers() -> dict[str, str]:
-    if not RTT_TOKEN:
+def rtt_headers(token: Optional[str] = None) -> dict[str, str]:
+    effective_token = token or RTT_ACCESS_TOKEN_CACHE or RTT_TOKEN
+    if not effective_token:
         raise HTTPException(
             status_code=503,
             detail="RTT_API_TOKEN is not configured. Put your Realtime Trains bearer token in backend/.env or the process environment.",
         )
     return {
-        "Authorization": f"Bearer {RTT_TOKEN}",
+        "Authorization": f"Bearer {effective_token}",
         "Accept": "application/json",
         "RTT-Version": RTT_API_VERSION,
     }
+
+
+def refresh_rtt_access_token() -> Optional[str]:
+    """Exchange a long-life RTT refresh token for a short-life access token when needed."""
+    global RTT_ACCESS_TOKEN_CACHE
+    if not RTT_TOKEN:
+        return None
+
+    url = f"{RTT_BASE_URL}/api/get_access_token"
+    try:
+        response = requests.get(
+            url,
+            headers=rtt_headers(RTT_TOKEN),
+            params={"version": RTT_API_VERSION},
+            timeout=18,
+        )
+    except requests.RequestException:
+        return None
+
+    if not response.ok:
+        return None
+
+    payload = response.json()
+    token = payload.get("token")
+    if isinstance(token, str) and token.strip():
+        RTT_ACCESS_TOKEN_CACHE = token.strip()
+        return RTT_ACCESS_TOKEN_CACHE
+    return None
 
 
 def rtt_get(path: str, params: dict[str, Any] | None = None) -> Any:
@@ -150,10 +180,16 @@ def rtt_get(path: str, params: dict[str, Any] | None = None) -> Any:
     except requests.RequestException as exc:
         raise HTTPException(status_code=502, detail=f"Realtime Trains request failed: {exc}") from exc
 
+    if response.status_code in {401, 403} and refresh_rtt_access_token():
+        try:
+            response = requests.get(url, headers=rtt_headers(), params=params, timeout=18)
+        except requests.RequestException as exc:
+            raise HTTPException(status_code=502, detail=f"Realtime Trains request failed after token refresh: {exc}") from exc
+
     if response.status_code == 204:
         return {"services": []}
     if response.status_code in {401, 403}:
-        raise HTTPException(status_code=response.status_code, detail="Realtime Trains token is missing required access or has expired.")
+        raise HTTPException(status_code=response.status_code, detail="Realtime Trains token is missing required access, is expired, or cannot be exchanged for an access token.")
     if response.status_code == 404:
         raise HTTPException(status_code=404, detail="The requested train service was not found in Realtime Trains.")
     if not response.ok:
