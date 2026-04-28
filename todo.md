@@ -3,7 +3,7 @@
 - [x] 完成 SBB 风格 React 首页，包含查询表单、候选车次列表、详情面板和历史记录。
 - [x] 联调 `/api/search-services`、`/api/resolve-service`、`/api/journeys` 的前端调用与错误处理。
 - [x] 运行 TypeScript 与生产构建检查，修复阻塞问题。
-- [ ] 保存最终 checkpoint，并向用户说明如何配置 `RTT_API_TOKEN` 与启动后端。
+- [x] 保存最终 checkpoint，并向用户说明如何配置 `RTT_API_TOKEN` 与启动后端。
 
 ## RTT Token Validation
 
@@ -14,9 +14,22 @@
 
 ## Dense SBB Interface Redesign
 
-- [ ] 移除首页所有图片与图片相关布局，保留 SBB 红白黑配色和硬朗分隔线。
-- [ ] 将页面改成高密度铁路运行表/ledger 布局，减少首屏大标题、留白和大卡片。
-- [ ] 查询表单改为紧凑横向控制条，日期、起站、终站、时间尽量一行展示。
-- [ ] 候选车次列表改为一条 item 一行，显示时间、车次、运营商、起终点、延误状态。
-- [ ] 历史记录改为一条 item 一行，显示日期、乘车区间、计划/实际时间、发到延误和保存状态。
-- [ ] 运行 TypeScript 与生产构建检查并保存新 checkpoint。
+- [x] 移除首页所有图片与图片相关布局，保留 SBB 红白黑配色和硬朗分隔线。
+- [x] 将页面改成高密度铁路运行表/ledger 布局，减少首屏大标题、留白和大卡片。
+- [x] 查询表单改为紧凑横向控制条，日期、起站、终站、时间尽量一行展示。
+- [x] 候选车次列表改为一条 item 一行，显示时间、车次、运营商、起终点、延误状态。
+- [x] 历史记录改为一条 item 一行，显示日期、乘车区间、计划/实际时间、发到延误和保存状态。
+- [x] 运行 TypeScript 与生产构建检查并保存新 checkpoint。
+
+## Search 500 Regression
+
+- [x] Investigate and fix 500 error when clicking the search button in the compact SBB ledger UI.
+- [x] Validate `/api/search-services` with the current default MKC → EUS request after the fix.
+- [ ] Save a new checkpoint after resolving the 500 error.
+
+## Token Reconnection After 500 Report
+
+- [x] Store the user-provided RTT token in local backend environment configuration without exposing it in user-facing output.
+- [x] Restart the FastAPI backend and confirm `/api/health` reports RTT configured.
+- [x] Validate the search button path through `/api/search-services` and confirm it returns candidate services instead of 500.
+- [ ] Save a corrected checkpoint after passing TypeScript/build checks.
