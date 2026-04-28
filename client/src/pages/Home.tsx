@@ -5,10 +5,6 @@
  */
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-const HERO_IMAGE = "/manus-storage/sbb-rail-ledger-hero_9651f47f.png";
-const DETAIL_IMAGE = "/manus-storage/sbb-delay-timetable-detail_564e29f8.png";
-const EMPTY_IMAGE = "/manus-storage/sbb-empty-history-marker_6dcdcb72.png";
-
 type Lang = "zh" | "en" | "fr";
 
 type SearchForm = {
@@ -89,97 +85,104 @@ const copy = {
   zh: {
     app: "UK Rail Ledger",
     strap: "英國鐵路乘坐歷史記錄",
-    heroTitle: "用時刻表方式記錄每一次英國鐵路乘車。",
-    heroBody: "輸入日期、起訖站與接近的出發時間，從 Realtime Trains 候選服務中手動選擇車次，系統會解析服務起終點、乘坐區間、實際時間與延誤分鐘，並可保存到 SQLite。",
-    apiBadge: "RTT API 代理已接入",
-    formTitle: "查詢車次",
+    headline: "高密度乘車台帳",
+    summary: "輸入日期、CRS 與接近出發時間，從 Realtime Trains 候選服務中手動選擇車次，解析實際到發與延誤後保存至 SQLite。",
+    apiBadge: "RTT API 已接入",
+    formTitle: "查詢",
     date: "日期",
-    origin: "起始站 CRS",
-    destination: "終點站 CRS",
-    time: "接近出發時間",
-    window: "搜尋窗口",
-    search: "查詢候選車次",
+    origin: "起始 CRS",
+    destination: "終點 CRS",
+    time: "時間",
+    window: "窗口",
+    search: "查詢",
     searching: "查詢中",
-    example: "示例已預填：2026-04-27，MKC → EUS，18:55。",
     candidates: "候選車次",
     noCandidates: "尚未查詢或未找到候選車次。",
-    select: "查看詳情",
-    save: "保存記錄",
-    detail: "行程詳情",
-    noDetail: "選擇一班車後，這裡會顯示起點、終點、上下車站、實際到發與延誤資訊。",
-    history: "已保存歷史",
-    refresh: "刷新歷史",
-    emptyHistory: "還沒有保存記錄。",
+    select: "詳情",
+    save: "保存",
+    detail: "當前詳情",
+    noDetail: "選擇一班車後顯示服務起終點、上下車站、計劃/實際時間、站台與延誤。",
+    history: "歷史記錄",
+    refresh: "刷新",
+    emptyHistory: "沒有保存記錄。",
     departure: "發車",
     arrival: "到站",
     planned: "計劃",
     actual: "實際",
     delay: "延誤",
-    platform: "站台",
+    platform: "台",
     service: "服務",
     operator: "運營商",
-    calling: "停站模式",
+    calling: "停站",
     saved: "已保存到本地 SQLite。",
-    tokenTip: "如果看到 token 錯誤，請在 backend/.env 或 shell 中設置 RTT_API_TOKEN。",
+    tokenTip: "示例：2026-04-27 · MKC → EUS · 18:55",
+    action: "操作",
+    route: "路線",
+    status: "狀態",
+    dep: "開",
+    arr: "到",
   },
   en: {
     app: "UK Rail Ledger",
     strap: "British rail journey history",
-    heroTitle: "Record UK rail journeys in the language of a working timetable.",
-    heroBody: "Enter a date, origin, destination and approximate departure time, manually choose the Realtime Trains service, then capture origin, destination, boarded section, actual timings and delay minutes into SQLite.",
-    apiBadge: "RTT API proxy connected",
-    formTitle: "Search service",
+    headline: "Dense journey ledger",
+    summary: "Enter date, CRS codes and an approximate departure time, manually pick a Realtime Trains service, parse actual timings and delays, then save to SQLite.",
+    apiBadge: "RTT API connected",
+    formTitle: "Search",
     date: "Date",
     origin: "Origin CRS",
-    destination: "Destination CRS",
-    time: "Approx departure",
-    window: "Search window",
-    search: "Find candidate services",
+    destination: "Dest CRS",
+    time: "Time",
+    window: "Window",
+    search: "Search",
     searching: "Searching",
-    example: "Example prefilled: 2026-04-27, MKC → EUS, 18:55.",
     candidates: "Candidate services",
     noCandidates: "No search yet, or no matching services found.",
-    select: "View detail",
-    save: "Save record",
-    detail: "Journey detail",
-    noDetail: "Choose a train to see service endpoints, boarded section, actual timings and delay information.",
-    history: "Saved history",
-    refresh: "Refresh history",
-    emptyHistory: "No saved journeys yet.",
+    select: "Detail",
+    save: "Save",
+    detail: "Current detail",
+    noDetail: "Choose a train to show endpoints, boarded section, planned/actual times, platforms and delay.",
+    history: "Journey history",
+    refresh: "Refresh",
+    emptyHistory: "No saved journeys.",
     departure: "Departure",
     arrival: "Arrival",
     planned: "Planned",
     actual: "Actual",
     delay: "Delay",
-    platform: "Platform",
+    platform: "Plat",
     service: "Service",
     operator: "Operator",
-    calling: "Calling pattern",
+    calling: "Calling",
     saved: "Saved to local SQLite.",
-    tokenTip: "If a token error appears, set RTT_API_TOKEN in backend/.env or the shell environment.",
+    tokenTip: "Example: 2026-04-27 · MKC → EUS · 18:55",
+    action: "Action",
+    route: "Route",
+    status: "Status",
+    dep: "Dep",
+    arr: "Arr",
   },
   fr: {
     app: "UK Rail Ledger",
     strap: "Historique des voyages ferroviaires britanniques",
-    heroTitle: "Enregistrer les voyages britanniques avec la rigueur d’un horaire ferroviaire.",
-    heroBody: "Saisissez la date, les gares et l’heure approximative, choisissez manuellement le service Realtime Trains, puis enregistrez l’origine, la destination, le tronçon, les horaires réels et les retards dans SQLite.",
-    apiBadge: "Proxy RTT API connecté",
-    formTitle: "Rechercher un train",
+    headline: "Registre compact des trajets",
+    summary: "Saisissez la date, les codes CRS et l’heure approximative, choisissez un service Realtime Trains, puis enregistrez horaires réels et retards dans SQLite.",
+    apiBadge: "API RTT connectée",
+    formTitle: "Recherche",
     date: "Date",
     origin: "CRS départ",
     destination: "CRS arrivée",
-    time: "Départ approx.",
+    time: "Heure",
     window: "Fenêtre",
-    search: "Trouver les services",
+    search: "Chercher",
     searching: "Recherche",
-    example: "Exemple prérempli : 2026-04-27, MKC → EUS, 18:55.",
     candidates: "Services candidats",
     noCandidates: "Aucune recherche ou aucun service trouvé.",
-    select: "Voir détail",
+    select: "Détail",
     save: "Enregistrer",
-    detail: "Détail du voyage",
-    noDetail: "Choisissez un train pour voir les terminus, le tronçon, les horaires réels et les retards.",
-    history: "Historique enregistré",
+    detail: "Détail courant",
+    noDetail: "Choisissez un train pour afficher terminus, tronçon, horaires, voies et retards.",
+    history: "Historique",
     refresh: "Actualiser",
     emptyHistory: "Aucun voyage enregistré.",
     departure: "Départ",
@@ -192,14 +195,19 @@ const copy = {
     operator: "Opérateur",
     calling: "Arrêts",
     saved: "Enregistré dans SQLite local.",
-    tokenTip: "En cas d’erreur de token, définissez RTT_API_TOKEN dans backend/.env ou dans le shell.",
+    tokenTip: "Exemple : 2026-04-27 · MKC → EUS · 18:55",
+    action: "Action",
+    route: "Route",
+    status: "État",
+    dep: "Dép",
+    arr: "Arr",
   },
 };
 
 function delayText(value?: number | null) {
   if (value === null || value === undefined) return "—";
   if (value === 0) return "RT";
-  return value > 0 ? `+${value} min` : `${value} min`;
+  return value > 0 ? `+${value}` : `${value}`;
 }
 
 function delayClass(value?: number | null) {
@@ -253,7 +261,7 @@ export default function Home() {
 
   async function loadHistory() {
     try {
-      const data = await apiJson<{ journeys: StoredJourney[] }>("/api/journeys?limit=20");
+      const data = await apiJson<{ journeys: StoredJourney[] }>("/api/journeys?limit=40");
       setHistory(data.journeys);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
@@ -313,14 +321,18 @@ export default function Home() {
   }
 
   return (
-    <main className="sbb-shell">
-      <header className="sbb-topbar">
-        <div className="brand-block">
+    <main className="sbb-shell dense-shell">
+      <header className="sbb-topbar compact-topbar">
+        <div className="brand-block compact-brand">
           <div className="sbb-mark">SBB</div>
           <div>
             <strong>{t.app}</strong>
             <span>{t.strap}</span>
           </div>
+        </div>
+        <div className="top-summary">
+          <b>{t.headline}</b>
+          <span>{t.summary}</span>
         </div>
         <div className="lang-switch" aria-label="Language selector">
           {(["zh", "en", "fr"] as Lang[]).map((item) => (
@@ -331,168 +343,130 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="hero-grid">
-        <div className="hero-copy">
-          <div className="api-ribbon">{t.apiBadge}</div>
-          <h1>{t.heroTitle}</h1>
-          <p>{t.heroBody}</p>
-          <p className="config-note">{t.tokenTip}</p>
-        </div>
-        <img src={HERO_IMAGE} alt="SBB inspired rail ledger graphic" />
-      </section>
-
-      <section className="workbench">
-        <form className="query-panel" onSubmit={search}>
-          <div className="panel-heading">
-            <span>01</span>
-            <h2>{t.formTitle}</h2>
-          </div>
-          <div className="field-grid">
-            <label>
-              {t.date}
-              <input type="date" value={form.travelDate} onChange={(e) => setForm({ ...form, travelDate: e.target.value })} />
-            </label>
-            <label>
-              {t.origin}
-              <input value={form.originCrs} maxLength={8} onChange={(e) => setForm({ ...form, originCrs: e.target.value.toUpperCase() })} />
-            </label>
-            <label>
-              {t.destination}
-              <input value={form.destinationCrs} maxLength={8} onChange={(e) => setForm({ ...form, destinationCrs: e.target.value.toUpperCase() })} />
-            </label>
-            <label>
-              {t.time}
-              <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
-            </label>
-            <label>
-              {t.window}
-              <select value={form.windowMinutes} onChange={(e) => setForm({ ...form, windowMinutes: Number(e.target.value) })}>
-                <option value={60}>60 min</option>
-                <option value={120}>120 min</option>
-                <option value={150}>150 min</option>
-                <option value={240}>240 min</option>
-              </select>
-            </label>
-          </div>
-          <button className="sbb-primary" disabled={loading}>{loading ? t.searching : t.search}</button>
-          <p className="fine-print">{t.example}</p>
+      <section className="control-strip">
+        <div className="api-ribbon">{t.apiBadge}</div>
+        <form className="dense-query" onSubmit={search}>
+          <label>{t.date}<input type="date" value={form.travelDate} onChange={(e) => setForm({ ...form, travelDate: e.target.value })} /></label>
+          <label>{t.origin}<input value={form.originCrs} maxLength={8} onChange={(e) => setForm({ ...form, originCrs: e.target.value.toUpperCase() })} /></label>
+          <label>{t.destination}<input value={form.destinationCrs} maxLength={8} onChange={(e) => setForm({ ...form, destinationCrs: e.target.value.toUpperCase() })} /></label>
+          <label>{t.time}<input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} /></label>
+          <label>{t.window}<select value={form.windowMinutes} onChange={(e) => setForm({ ...form, windowMinutes: Number(e.target.value) })}>
+            <option value={60}>60</option>
+            <option value={120}>120</option>
+            <option value={150}>150</option>
+            <option value={240}>240</option>
+          </select></label>
+          <button className="sbb-primary compact-submit" disabled={loading}>{loading ? t.searching : t.search}</button>
         </form>
-
-        <section className="candidate-panel">
-          <div className="panel-heading">
-            <span>02</span>
-            <h2>{t.candidates}</h2>
-          </div>
-          {candidates.length === 0 ? (
-            <div className="empty-state">
-              <img src={EMPTY_IMAGE} alt="Empty railway marker" />
-              <p>{t.noCandidates}</p>
-            </div>
-          ) : (
-            <div className="service-list">
-              {candidates.map((candidate) => (
-                <article key={`${candidate.identity}-${candidate.departureDate}`} className={selected === candidate.identity ? "service-row selected" : "service-row"}>
-                  <div className="time-cell">{timeOnly(candidate.departureDisplay || candidate.plannedDeparture)}</div>
-                  <div className="route-cell">
-                    <strong>{candidate.serviceOrigin} → {candidate.serviceDestination}</strong>
-                    <span>{candidate.operatorName || candidate.operatorCode || "—"} · {candidate.identity} · {candidate.trainReportingIdentity || "—"}</span>
-                  </div>
-                  <div className={`delay-pill ${delayClass(candidate.departureLatenessMinutes)}`}>{delayText(candidate.departureLatenessMinutes)}</div>
-                  <div className="row-actions">
-                    <button type="button" onClick={() => resolve(candidate, false)}>{t.select}</button>
-                    <button type="button" onClick={() => resolve(candidate, true)} disabled={saving && selected === candidate.identity}>{t.save}</button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+        <div className="example-line">{t.tokenTip}</div>
       </section>
 
       {message && <div className="status-line">{message}</div>}
 
-      <section className="detail-history-grid">
-        <section className="detail-panel">
-          <div className="panel-heading">
-            <span>03</span>
-            <h2>{t.detail}</h2>
-          </div>
-          {!detail ? (
-            <div className="detail-placeholder">
-              <img src={DETAIL_IMAGE} alt="Timetable detail illustration" />
-              <p>{t.noDetail}</p>
+      <section className="dense-board">
+        <section className="dense-panel candidates-panel">
+          <PanelHeading index="01" title={t.candidates} meta={`${candidates.length}`} />
+          <div className="dense-table service-table">
+            <div className="table-head service-row-grid">
+              <span>{t.dep}</span><span>{t.service}</span><span>{t.route}</span><span>{t.operator}</span><span>{t.platform}</span><span>{t.delay}</span><span>{t.action}</span>
             </div>
+            {candidates.length === 0 ? (
+              <div className="empty-line">{t.noCandidates}</div>
+            ) : candidates.map((candidate) => (
+              <article key={`${candidate.identity}-${candidate.departureDate}`} className={selected === candidate.identity ? "data-row selected service-row-grid" : "data-row service-row-grid"}>
+                <strong className="mono-time">{timeOnly(candidate.departureDisplay || candidate.plannedDeparture)}</strong>
+                <span className="mono-code">{candidate.identity} / {candidate.trainReportingIdentity || "—"}</span>
+                <span className="truncate">{candidate.serviceOrigin || "—"} → {candidate.serviceDestination || "—"}</span>
+                <span className="truncate">{candidate.operatorName || candidate.operatorCode || "—"}</span>
+                <span>{candidate.platform || "—"}</span>
+                <b className={delayClass(candidate.departureLatenessMinutes)}>{delayText(candidate.departureLatenessMinutes)}</b>
+                <span className="inline-actions">
+                  <button type="button" onClick={() => resolve(candidate, false)}>{t.select}</button>
+                  <button type="button" onClick={() => resolve(candidate, true)} disabled={saving && selected === candidate.identity}>{t.save}</button>
+                </span>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="dense-panel detail-panel-compact">
+          <PanelHeading index="02" title={t.detail} meta={selectedCandidate?.identity || "—"} />
+          {!detail ? (
+            <div className="empty-line tall">{t.noDetail}</div>
           ) : (
-            <>
-              <div className="journey-title">
-                <div>
-                  <span>{detail.boarded.crs}</span>
-                  <strong>{detail.boarded.name}</strong>
-                </div>
-                <b>→</b>
-                <div>
-                  <span>{detail.alighted.crs}</span>
-                  <strong>{detail.alighted.name}</strong>
-                </div>
+            <div className="detail-ledger">
+              <div className="journey-compact-row">
+                <span className="station-code">{detail.boarded.crs}</span>
+                <strong className="truncate">{detail.boarded.name}</strong>
+                <span className="arrow-cell">→</span>
+                <span className="station-code">{detail.alighted.crs}</span>
+                <strong className="truncate">{detail.alighted.name}</strong>
               </div>
-              <div className="metrics-grid">
-                <Metric label={t.departure} planned={timeOnly(detail.plannedDeparture)} actual={timeOnly(detail.actualDeparture || detail.departureDisplay)} delay={detail.departureLatenessMinutes} platform={detail.platformDeparture} t={t} />
-                <Metric label={t.arrival} planned={timeOnly(detail.plannedArrival)} actual={timeOnly(detail.actualArrival || detail.arrivalDisplay)} delay={detail.arrivalLatenessMinutes} platform={detail.platformArrival} t={t} />
+              <div className="detail-metrics-row">
+                <MetricLine title={t.departure} planned={timeOnly(detail.plannedDeparture)} actual={timeOnly(detail.actualDeparture || detail.departureDisplay)} delay={detail.departureLatenessMinutes} platform={detail.platformDeparture} t={t} />
+                <MetricLine title={t.arrival} planned={timeOnly(detail.plannedArrival)} actual={timeOnly(detail.actualArrival || detail.arrivalDisplay)} delay={detail.arrivalLatenessMinutes} platform={detail.platformArrival} t={t} />
               </div>
-              <dl className="service-meta">
-                <div><dt>{t.service}</dt><dd>{detail.serviceOrigin} → {detail.serviceDestination}</dd></div>
-                <div><dt>{t.operator}</dt><dd>{detail.operatorName || selectedCandidate?.operatorName || "—"}</dd></div>
-              </dl>
-              <div className="calling-pattern">
-                <h3>{t.calling}</h3>
-                {(detail.callingPattern || []).slice(0, 18).map((stop, index) => (
-                  <div className="calling-row" key={`${stop.name}-${index}`}>
+              <div className="meta-line">
+                <span>{t.service}: <b>{detail.serviceOrigin} → {detail.serviceDestination}</b></span>
+                <span>{t.operator}: <b>{detail.operatorName || selectedCandidate?.operatorName || "—"}</b></span>
+              </div>
+              <div className="calling-compact">
+                <div className="table-head calling-row-grid"><span>#</span><span>{t.calling}</span><span>{t.actual}</span><span>{t.delay}</span></div>
+                {(detail.callingPattern || []).slice(0, 22).map((stop, index) => (
+                  <div className="data-row calling-row-grid" key={`${stop.name}-${index}`}>
                     <span>{String(index + 1).padStart(2, "0")}</span>
-                    <strong>{stop.name}</strong>
-                    <em>{stop.actual || stop.planned || "—"}</em>
+                    <strong className="truncate">{stop.name}</strong>
+                    <span className="mono-time">{stop.actual || stop.planned || "—"}</span>
                     <b className={delayClass(stop.latenessMinutes)}>{delayText(stop.latenessMinutes)}</b>
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </section>
 
-        <section className="history-panel">
-          <div className="panel-heading with-action">
-            <div><span>04</span><h2>{t.history}</h2></div>
-            <button onClick={loadHistory}>{t.refresh}</button>
+        <section className="dense-panel history-panel-compact">
+          <PanelHeading index="03" title={t.history} meta={`${history.length}`} action={<button onClick={loadHistory}>{t.refresh}</button>} />
+          <div className="dense-table history-table">
+            <div className="table-head history-row-grid"><span>{t.date}</span><span>{t.route}</span><span>{t.service}</span><span>{t.dep}</span><span>{t.arr}</span><span>{t.delay}</span></div>
+            {history.length === 0 ? (
+              <div className="empty-line">{t.emptyHistory}</div>
+            ) : history.map((item) => (
+              <div className="data-row history-row-grid" key={item.id}>
+                <span>{item.travel_date}</span>
+                <strong>{item.boarded_crs} → {item.alighted_crs}</strong>
+                <span className="truncate">{item.train_reporting_identity || item.service_identity} · {item.operator_name || "—"}</span>
+                <span>{timeOnly(item.actual_departure || item.planned_departure)} <em>{delayText(item.departure_lateness_minutes)}</em></span>
+                <span>{timeOnly(item.actual_arrival || item.planned_arrival)}</span>
+                <b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b>
+              </div>
+            ))}
           </div>
-          {history.length === 0 ? (
-            <p className="fine-print">{t.emptyHistory}</p>
-          ) : (
-            <div className="history-table">
-              {history.map((item) => (
-                <div className="history-row" key={item.id}>
-                  <span>{item.travel_date}</span>
-                  <strong>{item.boarded_crs} → {item.alighted_crs}</strong>
-                  <em>{timeOnly(item.actual_departure || item.planned_departure)} / {timeOnly(item.actual_arrival || item.planned_arrival)}</em>
-                  <b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b>
-                </div>
-              ))}
-            </div>
-          )}
         </section>
       </section>
     </main>
   );
 }
 
-function Metric({ label, planned, actual, delay, platform, t }: { label: string; planned: string; actual: string; delay?: number | null; platform?: string; t: typeof copy[Lang] }) {
+function PanelHeading({ index, title, meta, action }: { index: string; title: string; meta?: string; action?: React.ReactNode }) {
   return (
-    <div className="metric-card">
-      <span>{label}</span>
+    <div className="panel-heading dense-heading">
+      <span>{index}</span>
+      <h2>{title}</h2>
+      {meta && <b>{meta}</b>}
+      {action && <div className="heading-action">{action}</div>}
+    </div>
+  );
+}
+
+function MetricLine({ title, planned, actual, delay, platform, t }: { title: string; planned: string; actual: string; delay?: number | null; platform?: string; t: typeof copy[Lang] }) {
+  return (
+    <div className="metric-line">
+      <span>{title}</span>
       <strong>{actual}</strong>
-      <dl>
-        <div><dt>{t.planned}</dt><dd>{planned}</dd></div>
-        <div><dt>{t.delay}</dt><dd className={delayClass(delay)}>{delayText(delay)}</dd></div>
-        <div><dt>{t.platform}</dt><dd>{platform || "—"}</dd></div>
-      </dl>
+      <em>{t.planned} {planned}</em>
+      <b className={delayClass(delay)}>{t.delay} {delayText(delay)}</b>
+      <i>{t.platform} {platform || "—"}</i>
     </div>
   );
 }
