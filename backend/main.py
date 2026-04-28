@@ -13,10 +13,11 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional  # noqa: F401 (Optional kept for return types)
 
 import requests
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -51,8 +52,6 @@ DB_PATH = sqlite_path_from_env()
 RTT_BASE_URL = os.getenv("RTT_BASE_URL", "https://data.rtt.io").rstrip("/")
 RTT_API_VERSION = os.getenv("RTT_API_VERSION", "2026-04-09")
 RTT_TOKEN = os.getenv("RTT_API_TOKEN", "").strip()
-RTT_ACCESS_TOKEN_CACHE: Optional[str] = None
-
 FALLBACK_STATIONS = [
     {"crs": "MKC", "name": "Milton Keynes Central", "longCode": "MILTONK"},
     {"crs": "EUS", "name": "London Euston", "longCode": "EUSTON"},
@@ -130,67 +129,37 @@ def startup() -> None:
     init_db()
 
 
-def rtt_headers(token: Optional[str] = None) -> dict[str, str]:
-    effective_token = token or RTT_ACCESS_TOKEN_CACHE or RTT_TOKEN
-    if not effective_token:
-        raise HTTPException(
-            status_code=503,
-            detail="RTT_API_TOKEN is not configured. Put your Realtime Trains bearer token in backend/.env or the process environment.",
-        )
+def rtt_headers(token: str) -> dict[str, str]:
     return {
-        "Authorization": f"Bearer {effective_token}",
+        "Authorization": f"Bearer {token}",
         "Accept": "application/json",
-        "RTT-Version": RTT_API_VERSION,
+        "Version": RTT_API_VERSION,
     }
 
 
-def refresh_rtt_access_token() -> Optional[str]:
-    """Exchange a long-life RTT refresh token for a short-life access token when needed."""
-    global RTT_ACCESS_TOKEN_CACHE
-    if not RTT_TOKEN:
-        return None
-
-    url = f"{RTT_BASE_URL}/api/get_access_token"
-    try:
-        response = requests.get(
-            url,
-            headers=rtt_headers(RTT_TOKEN),
-            params={"version": RTT_API_VERSION},
-            timeout=18,
+def get_rtt_token(x_rtt_token: Annotated[Optional[str], Header()] = None) -> str:
+    token = (x_rtt_token or RTT_TOKEN or "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="No RTT API token provided. Enter your Realtime Trains bearer token in the app.",
         )
-    except requests.RequestException:
-        return None
-
-    if not response.ok:
-        return None
-
-    payload = response.json()
-    token = payload.get("token")
-    if isinstance(token, str) and token.strip():
-        RTT_ACCESS_TOKEN_CACHE = token.strip()
-        return RTT_ACCESS_TOKEN_CACHE
-    return None
+    return token
 
 
-def rtt_get(path: str, params: dict[str, Any] | None = None) -> Any:
+def rtt_get(path: str, token: str, params: dict[str, Any] | None = None) -> Any:
     params = params or {}
     params.setdefault("version", RTT_API_VERSION)
     url = f"{RTT_BASE_URL}{path}"
     try:
-        response = requests.get(url, headers=rtt_headers(), params=params, timeout=18)
+        response = requests.get(url, headers=rtt_headers(token), params=params, timeout=18)
     except requests.RequestException as exc:
         raise HTTPException(status_code=502, detail=f"Realtime Trains request failed: {exc}") from exc
-
-    if response.status_code in {401, 403} and refresh_rtt_access_token():
-        try:
-            response = requests.get(url, headers=rtt_headers(), params=params, timeout=18)
-        except requests.RequestException as exc:
-            raise HTTPException(status_code=502, detail=f"Realtime Trains request failed after token refresh: {exc}") from exc
 
     if response.status_code == 204:
         return {"services": []}
     if response.status_code in {401, 403}:
-        raise HTTPException(status_code=response.status_code, detail="Realtime Trains token is missing required access, is expired, or cannot be exchanged for an access token.")
+        raise HTTPException(status_code=401, detail="RTT token is invalid or lacks the required access. Check your API key.")
     if response.status_code == 404:
         raise HTTPException(status_code=404, detail="The requested train service was not found in Realtime Trains.")
     if not response.ok:
@@ -302,7 +271,7 @@ def find_stop(locations: list[dict[str, Any]], requested_code: str) -> Optional[
     return None
 
 
-def enrich_candidate_with_detail(candidate: dict[str, Any], boarded: str, alighted: str) -> dict[str, Any]:
+def enrich_candidate_with_detail(candidate: dict[str, Any], boarded: str, alighted: str, token: str) -> dict[str, Any]:
     if candidate.get("plannedArrival") or candidate.get("actualArrival"):
         return candidate
     identity = candidate.get("identity")
@@ -310,7 +279,7 @@ def enrich_candidate_with_detail(candidate: dict[str, Any], boarded: str, alight
     if not identity or not departure_date:
         return candidate
     try:
-        payload = rtt_get("/gb-nr/service", {"identity": identity, "departureDate": departure_date})
+        payload = rtt_get("/gb-nr/service", token, {"identity": identity, "departureDate": departure_date})
         detail = normalise_detail(payload, boarded, alighted)
     except HTTPException:
         return candidate
@@ -422,16 +391,32 @@ def save_journey(detail: dict[str, Any]) -> int:
         return int(cursor.lastrowid)
 
 
+@app.get("/api/exchange-token")
+def exchange_token(token: str = Depends(get_rtt_token)) -> dict[str, Any]:
+    try:
+        response = requests.get(
+            f"{RTT_BASE_URL}/api/get_access_token",
+            headers=rtt_headers(token),
+            timeout=18,
+        )
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=502, detail=f"Token exchange request failed: {exc}") from exc
+    if not response.ok:
+        raise HTTPException(status_code=401, detail="Failed to exchange token. Make sure your RTT key is the refresh token from api-portal.rtt.io.")
+    data = response.json()
+    return {"accessToken": data.get("token"), "validUntil": data.get("validUntil")}
+
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
-    return {"ok": True, "database": str(DB_PATH), "rttConfigured": bool(RTT_TOKEN), "rttVersion": RTT_API_VERSION}
+    return {"ok": True, "rttVersion": RTT_API_VERSION}
 
 
 @app.get("/api/stations")
-def stations(q: str = Query(default="", min_length=0, max_length=80)) -> dict[str, Any]:
+def stations(q: str = Query(default="", min_length=0, max_length=80), token: str = Depends(get_rtt_token)) -> dict[str, Any]:
     query = q.strip().lower()
     try:
-        payload = rtt_get("/data/stops")
+        payload = rtt_get("/data/stops", token)
         stops = payload.get("stops") or []
         normalised = [
             {"crs": stop.get("shortCode"), "name": stop.get("description"), "uniqueIdentity": stop.get("uniqueIdentity")}
@@ -446,12 +431,13 @@ def stations(q: str = Query(default="", min_length=0, max_length=80)) -> dict[st
 
 
 @app.post("/api/search-services")
-def search_services(request: SearchRequest) -> dict[str, Any]:
+def search_services(request: SearchRequest, token: str = Depends(get_rtt_token)) -> dict[str, Any]:
     requested_dt = datetime.fromisoformat(f"{request.travelDate}T{request.time}:00")
     time_from = requested_dt - timedelta(minutes=30)
     time_to = time_from + timedelta(minutes=request.windowMinutes)
     payload = rtt_get(
         "/gb-nr/location",
+        token,
         {
             "code": request.originCrs.upper(),
             "filterTo": request.destinationCrs.upper(),
@@ -467,7 +453,7 @@ def search_services(request: SearchRequest) -> dict[str, Any]:
     if candidates:
         with ThreadPoolExecutor(max_workers=min(6, len(candidates))) as executor:
             futures = {
-                executor.submit(enrich_candidate_with_detail, candidate, request.originCrs, request.destinationCrs): index
+                executor.submit(enrich_candidate_with_detail, candidate, request.originCrs, request.destinationCrs, token): index
                 for index, candidate in enumerate(candidates)
             }
             enriched = list(candidates)
@@ -482,9 +468,10 @@ def search_services(request: SearchRequest) -> dict[str, Any]:
 
 
 @app.post("/api/resolve-service")
-def resolve_service(request: ResolveRequest) -> dict[str, Any]:
+def resolve_service(request: ResolveRequest, token: str = Depends(get_rtt_token)) -> dict[str, Any]:
     payload = rtt_get(
         "/gb-nr/service",
+        token,
         {
             "identity": request.identity,
             "departureDate": request.departureDate,

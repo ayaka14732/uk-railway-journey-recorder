@@ -189,9 +189,113 @@
   background: #ffffff;
 }
 
+.token-header-btn {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--sbb-red);
+  background: transparent;
+  color: var(--sbb-red);
+  font: inherit;
+  font-weight: 700;
+}
+
+.token-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.token-dialog {
+  width: min(520px, 92vw);
+  background: #ffffff;
+  border: 1px solid var(--sbb-line);
+  border-top: 4px solid var(--sbb-red);
+  padding: 0;
+}
+
+.token-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sbb-line);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.token-dialog-close {
+  border: none;
+  background: none;
+  font-size: 20px;
+  color: #666666;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.token-dialog-desc {
+  margin: 10px 12px 8px;
+  color: #444444;
+}
+
+.token-dialog-desc a {
+  color: var(--sbb-red);
+}
+
+.token-dialog-input {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 0 12px;
+  border: 1px solid #bbbbbb;
+  padding: 5px 7px;
+  font: inherit;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.token-dialog-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.token-dialog-actions button {
+  padding: 5px 14px;
+  border: 1px solid var(--sbb-red);
+  background: var(--sbb-red);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+}
+
+.token-dialog-actions button:disabled {
+  border-color: #999999;
+  background: #dddddd;
+  color: #555555;
+}
+
+.token-dialog-actions button:last-child:not(:first-child) {
+  background: transparent;
+  color: var(--sbb-red);
+}
+
+.token-status-ok {
+  margin: 0 12px 12px;
+  color: #146b2f;
+  font-weight: 700;
+}
+
+.token-status-error {
+  margin: 0 12px 12px;
+  color: var(--sbb-red);
+}
+
 .search-form {
   display: grid;
-  grid-template-columns: 160px 90px 90px 95px 110px 90px;
+  grid-template-columns: 200px 220px 220px 160px 160px 100px;
   gap: 0;
   border-bottom: 1px solid var(--sbb-line);
 }
@@ -311,7 +415,7 @@
 }
 
 .history-row {
-  grid-template-columns: 100px 110px minmax(180px, 1fr) 82px 82px 78px 82px 82px 78px;
+  grid-template-columns: 100px 110px minmax(180px, 1fr) 55px 82px 82px 78px 55px 82px 82px 78px;
 }
 
 .truncate {

@@ -3,7 +3,7 @@
  * Keep the page English-only, simple, compact, red/black/white, and table-first.
  * Avoid decorative imagery, animation, language switching, platform fields, and detail panels.
  */
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type SearchForm = {
   travelDate: string;
@@ -65,9 +65,11 @@ type StoredJourney = {
   planned_departure?: string;
   actual_departure?: string;
   departure_lateness_minutes?: number | null;
+  platform_departure?: string | null;
   planned_arrival?: string;
   actual_arrival?: string;
   arrival_lateness_minutes?: number | null;
+  platform_arrival?: string | null;
 };
 
 const DEFAULT_FORM: SearchForm = {
@@ -98,9 +100,10 @@ function timeOnly(value?: string) {
 }
 
 async function apiJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const { headers: extra, ...rest } = options ?? {};
   const response = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
-    ...options,
+    headers: { "Content-Type": "application/json", ...(extra as Record<string, string> | undefined) },
+    ...rest,
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -111,6 +114,52 @@ async function apiJson<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export default function Home() {
+  const [apiToken, setApiToken] = useState<string>(() => localStorage.getItem("rtt_api_token") ?? "");
+  const [showTokenDialog, setShowTokenDialog] = useState(() => !localStorage.getItem("rtt_api_token"));
+  const [draftToken, setDraftToken] = useState<string>(() => localStorage.getItem("rtt_api_token") ?? "");
+  const [dialogStatus, setDialogStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [dialogError, setDialogError] = useState("");
+  const [tokenValidUntil, setTokenValidUntil] = useState("");
+  const accessTokenCache = useRef<{ token: string; expiresAt: number } | null>(null);
+
+  useEffect(() => { accessTokenCache.current = null; }, [apiToken]);
+
+  async function handleExchange() {
+    const t = draftToken.trim();
+    if (!t) return;
+    setDialogStatus("loading");
+    setDialogError("");
+    try {
+      const data = await apiJson<{ accessToken: string; validUntil: string }>(
+        "/api/exchange-token",
+        { headers: { "X-RTT-Token": t } },
+      );
+      accessTokenCache.current = { token: data.accessToken, expiresAt: new Date(data.validUntil).getTime() };
+      setApiToken(t);
+      localStorage.setItem("rtt_api_token", t);
+      setTokenValidUntil(data.validUntil);
+      setDialogStatus("ok");
+    } catch (err) {
+      setDialogStatus("error");
+      setDialogError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function getEffectiveToken(): Promise<string> {
+    const cache = accessTokenCache.current;
+    if (cache && cache.expiresAt - Date.now() > 60_000) return cache.token;
+    try {
+      const data = await apiJson<{ accessToken: string; validUntil: string }>(
+        "/api/exchange-token",
+        { headers: { "X-RTT-Token": apiToken } },
+      );
+      accessTokenCache.current = { token: data.accessToken, expiresAt: new Date(data.validUntil).getTime() };
+      return data.accessToken;
+    } catch {
+      return apiToken;
+    }
+  }
+
   const [form, setForm] = useState<SearchForm>(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string>("");
@@ -140,8 +189,10 @@ export default function Home() {
     setMessage("");
     setCandidates([]);
     try {
+      const token = await getEffectiveToken();
       const data = await apiJson<{ candidates: Candidate[] }>("/api/search-services", {
         method: "POST",
+        headers: { "X-RTT-Token": token },
         body: JSON.stringify({
           ...form,
           originCrs: form.originCrs.toUpperCase(),
@@ -161,8 +212,10 @@ export default function Home() {
     setSavingId(candidate.identity);
     setMessage("");
     try {
+      const token = await getEffectiveToken();
       const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
         method: "POST",
+        headers: { "X-RTT-Token": token },
         body: JSON.stringify({
           travelDate: form.travelDate,
           originCrs: form.originCrs.toUpperCase(),
@@ -187,7 +240,43 @@ export default function Home() {
       <header className="plain-header">
         <div className="brand-mark">UK Rail History</div>
         <p>Search Realtime Trains services and add journeys directly to the local history database.</p>
+        <button type="button" className="token-header-btn" onClick={() => { setDraftToken(apiToken); setDialogStatus("idle"); setShowTokenDialog(true); }}>
+          {apiToken ? "Token ✓" : "Set token"}
+        </button>
       </header>
+
+      {showTokenDialog && (
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTokenDialog(false); }}>
+          <div className="token-dialog">
+            <div className="token-dialog-header">
+              <span>RTT API Token</span>
+              <button type="button" className="token-dialog-close" onClick={() => setShowTokenDialog(false)}>×</button>
+            </div>
+            <p className="token-dialog-desc">Enter your refresh token from <a href="https://api-portal.rtt.io" target="_blank" rel="noopener noreferrer">api-portal.rtt.io</a>.</p>
+            <input
+              type="text"
+              className="token-dialog-input"
+              value={draftToken}
+              onChange={(e) => { setDraftToken(e.target.value); setDialogStatus("idle"); }}
+              placeholder="eyJ…"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") handleExchange(); }}
+            />
+            <div className="token-dialog-actions">
+              <button type="button" onClick={handleExchange} disabled={dialogStatus === "loading" || !draftToken.trim()}>
+                {dialogStatus === "loading" ? "Exchanging…" : "Exchange token"}
+              </button>
+              {dialogStatus === "ok" && <button type="button" onClick={() => setShowTokenDialog(false)}>Done</button>}
+            </div>
+            {dialogStatus === "ok" && (
+              <div className="token-status-ok">Token valid until {new Date(tokenValidUntil).toLocaleTimeString()}</div>
+            )}
+            {dialogStatus === "error" && (
+              <div className="token-status-error">{dialogError}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       <section className="search-panel">
         <form className="search-form" onSubmit={search}>
@@ -241,7 +330,7 @@ export default function Home() {
         <div className="section-title"><h2>Journey history</h2><button type="button" onClick={loadHistory}>Refresh</button></div>
         <div className="plain-table history-table">
           <div className="table-head history-row">
-            <span>Date</span><span>Journey</span><span>Service</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span>
+            <span>Date</span><span>Journey</span><span>Service</span><span>Dep plat</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span>
           </div>
           {history.length === 0 ? (
             <div className="empty-row">No journeys saved.</div>
@@ -250,9 +339,11 @@ export default function Home() {
               <span>{item.travel_date}</span>
               <strong>{item.boarded_crs} to {item.alighted_crs}</strong>
               <span className="truncate">{item.train_reporting_identity || item.service_identity} · {item.operator_name || "—"}</span>
+              <span>{item.platform_departure ?? "—"}</span>
               <span>{timeOnly(item.planned_departure)}</span>
               <span>{timeOnly(item.actual_departure)}</span>
               <b className={delayClass(item.departure_lateness_minutes)}>{delayText(item.departure_lateness_minutes)}</b>
+              <span>{item.platform_arrival ?? "—"}</span>
               <span>{timeOnly(item.planned_arrival)}</span>
               <span>{timeOnly(item.actual_arrival)}</span>
               <b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b>
