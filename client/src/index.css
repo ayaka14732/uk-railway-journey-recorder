@@ -184,8 +184,18 @@
   background: #ffffff;
 }
 
-.token-header-btn {
+.stats-header-btn {
   margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--sbb-line);
+  background: transparent;
+  color: #444444;
+  font: inherit;
+  font-weight: 700;
+}
+
+.token-header-btn {
+  margin-left: 0;
   padding: 3px 10px;
   border: 1px solid var(--sbb-red);
   background: transparent;
@@ -202,6 +212,32 @@
   align-items: center;
   justify-content: center;
   z-index: 100;
+}
+
+.stats-dialog {
+  width: min(580px, 96vw);
+}
+
+.stats-charts {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 12px 4px;
+  flex-wrap: wrap;
+}
+
+.stats-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stats-chart-title {
+  font-weight: 700;
+  font-size: 12px;
+  color: #444444;
+  margin-bottom: 4px;
+  letter-spacing: 0.05em;
 }
 
 .token-dialog {

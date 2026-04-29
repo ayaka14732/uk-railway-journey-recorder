@@ -4,6 +4,7 @@
  * Avoid decorative imagery, animation, language switching, platform fields, and detail panels.
  */
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Cell, Legend, Pie, PieChart, Tooltip } from "recharts";
 
 type Station = { crs: string; name: string };
 
@@ -76,6 +77,8 @@ type StoredJourney = {
   reason?: string;
   detailed_reason?: string;
 };
+
+const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
 
 const DEFAULT_FORM: SearchForm = {
   travelDate: "2026-04-27",
@@ -237,12 +240,31 @@ export default function Home() {
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
   const [pendingCandidate, setPendingCandidate] = useState<Candidate | null>(null);
   const [viewingDetail, setViewingDetail] = useState<StoredJourney | null>(null);
+  const [showStats, setShowStats] = useState(false);
   const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [addReason, setAddReason] = useState<"Love" | "Leisure" | "Life" | "Work">("Love");
   const [addDetailedReason, setAddDetailedReason] = useState<string>("");
   const [stations, setStations] = useState<Station[]>([]);
 
   const stationMap = useMemo(() => new Map(stations.map((s) => [s.crs, s.name])), [stations]);
+
+  const operatorData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const j of history) {
+      const key = j.operator_name || "Unknown";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [history]);
+
+  const reasonData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const j of history) {
+      const key = j.reason || "Unknown";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [history]);
 
   function stationLabel(crs?: string): string {
     if (!crs) return "—";
@@ -349,6 +371,7 @@ export default function Home() {
     <main className="plain-shell">
       <header className="plain-header">
         <div className="brand-mark">UK Rail History</div>
+        <button type="button" className="stats-header-btn" onClick={() => setShowStats(true)}>Stats</button>
         <button type="button" className="token-header-btn" onClick={() => { setDraftToken(apiToken); setDialogStatus("idle"); setShowTokenDialog(true); }}>
           {apiToken ? "Token ✓" : "Set token"}
         </button>
@@ -442,6 +465,42 @@ export default function Home() {
             </div>
             <div className="token-dialog-actions">
               <button type="button" onClick={() => setViewingDetail(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showStats && (
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowStats(false); }}>
+          <div className="token-dialog stats-dialog">
+            <div className="token-dialog-header">
+              <span>Statistics — {history.length} journeys</span>
+              <button type="button" className="token-dialog-close" onClick={() => setShowStats(false)}>×</button>
+            </div>
+            <div className="stats-charts">
+              <div className="stats-chart">
+                <div className="stats-chart-title">By Operator</div>
+                <PieChart width={260} height={240}>
+                  <Pie data={operatorData} cx={130} cy={100} outerRadius={85} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
+                    {operatorData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(v, n) => [v, n]} />
+                  <Legend />
+                </PieChart>
+              </div>
+              <div className="stats-chart">
+                <div className="stats-chart-title">By Reason</div>
+                <PieChart width={260} height={240}>
+                  <Pie data={reasonData} cx={130} cy={100} outerRadius={85} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
+                    {reasonData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(v, n) => [v, n]} />
+                  <Legend />
+                </PieChart>
+              </div>
+            </div>
+            <div className="token-dialog-actions">
+              <button type="button" onClick={() => setShowStats(false)}>Close</button>
             </div>
           </div>
         </div>
