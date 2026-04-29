@@ -7,6 +7,7 @@ journey records in SQLite. It intentionally avoids exposing the bearer token to 
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import sqlite3
@@ -79,6 +80,9 @@ class ResolveRequest(BaseModel):
     identity: str = Field(..., min_length=2)
     departureDate: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     save: bool = False
+    direction: Optional[str] = None
+    reason: Optional[str] = None
+    detailedReason: Optional[str] = None
 
 
 app = FastAPI(title="UK Rail History API", version="0.1.0")
@@ -96,6 +100,22 @@ def init_db() -> None:
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS stations (
+                crs  TEXT PRIMARY KEY,
+                name TEXT NOT NULL
+            )
+            """
+        )
+        if conn.execute("SELECT COUNT(*) FROM stations").fetchone()[0] == 0:
+            csv_path = ROOT_DIR / "crs.csv"
+            if csv_path.exists():
+                with open(csv_path, newline="", encoding="utf-8") as f:
+                    conn.executemany(
+                        "INSERT OR IGNORE INTO stations (crs, name) VALUES (?, ?)",
+                        ((r["crs"], r["name"]) for r in csv.DictReader(f) if r.get("crs")),
+                    )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS journeys (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 travel_date TEXT NOT NULL,
@@ -106,8 +126,8 @@ def init_db() -> None:
                 operator_code TEXT,
                 operator_name TEXT,
                 train_reporting_identity TEXT,
-                service_origin_name TEXT,
-                service_destination_name TEXT,
+                service_origin_crs TEXT,
+                service_destination_crs TEXT,
                 planned_departure TEXT,
                 actual_departure TEXT,
                 departure_lateness_minutes INTEGER,
@@ -116,6 +136,9 @@ def init_db() -> None:
                 arrival_lateness_minutes INTEGER,
                 platform_departure TEXT,
                 platform_arrival TEXT,
+                direction TEXT,
+                reason TEXT,
+                detailed_reason TEXT,
                 raw_json TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
@@ -231,6 +254,24 @@ def pair_name(pairs: list[dict[str, Any]] | None) -> str:
     return " / ".join(location_name(pair.get("location") or {}) for pair in pairs)
 
 
+def pair_crs(pairs: list[dict[str, Any]] | None) -> str:
+    if not pairs:
+        return ""
+    crses = []
+    for pair in pairs:
+        loc = pair.get("location") or pair  # handle both {location:{}} and direct location
+        code = str(loc.get("shortCode") or "").strip().upper()
+        if not code:
+            short_codes = loc.get("shortCodes") or []
+            code = str(short_codes[0]).strip().upper() if short_codes else ""
+        if not code:
+            all_codes = code_set(loc)
+            crs_like = sorted([c for c in all_codes if len(c) == 3 and c.isalpha()])
+            code = crs_like[0] if crs_like else ""
+        crses.append(code)
+    return " / ".join(c for c in crses if c)
+
+
 def normalise_candidate(item: dict[str, Any], requested_origin: str, requested_destination: str) -> dict[str, Any]:
     metadata = item.get("scheduleMetadata") or {}
     operator = metadata.get("operator") or {}
@@ -245,8 +286,8 @@ def normalise_candidate(item: dict[str, Any], requested_origin: str, requested_d
         "trainReportingIdentity": metadata.get("trainReportingIdentity"),
         "operatorCode": operator.get("code"),
         "operatorName": operator.get("name"),
-        "serviceOrigin": pair_name(item.get("origin")),
-        "serviceDestination": pair_name(item.get("destination")),
+        "serviceOriginCrs": pair_crs(item.get("origin")),
+        "serviceDestinationCrs": pair_crs(item.get("destination")),
         "requestedOriginCrs": requested_origin.upper(),
         "requestedDestinationCrs": requested_destination.upper(),
         "plannedDeparture": planned_time(dep),
@@ -313,6 +354,17 @@ def normalise_detail(payload: dict[str, Any], boarded: str, alighted: str) -> di
     dep_platform = ((boarding_stop.get("locationMetadata") or {}).get("platform") or {}).get("actual") or ((boarding_stop.get("locationMetadata") or {}).get("platform") or {}).get("planned")
     arr_platform = ((alighting_stop.get("locationMetadata") or {}).get("platform") or {}).get("actual") or ((alighting_stop.get("locationMetadata") or {}).get("platform") or {}).get("planned")
 
+    def _fallback_crs(stop: dict[str, Any] | None) -> str:
+        if not stop:
+            return ""
+        loc = stop.get("location") or {}
+        codes = code_set(loc)
+        crs_like = sorted([c for c in codes if len(c) == 3 and c.isalpha()])
+        return crs_like[0] if crs_like else ""
+
+    origin_crs = pair_crs(service.get("origin")) or _fallback_crs(locations[0] if locations else None)
+    destination_crs = pair_crs(service.get("destination")) or _fallback_crs(locations[-1] if locations else None)
+
     detail = {
         "travelDate": metadata.get("departureDate"),
         "identity": metadata.get("identity"),
@@ -321,8 +373,8 @@ def normalise_detail(payload: dict[str, Any], boarded: str, alighted: str) -> di
         "trainReportingIdentity": metadata.get("trainReportingIdentity"),
         "operatorCode": operator.get("code"),
         "operatorName": operator.get("name"),
-        "serviceOrigin": pair_name(service.get("origin")),
-        "serviceDestination": pair_name(service.get("destination")),
+        "serviceOriginCrs": origin_crs,
+        "serviceDestinationCrs": destination_crs,
         "boarded": {"crs": boarded.upper(), "name": location_name(boarding_stop.get("location") or {})},
         "alighted": {"crs": alighted.upper(), "name": location_name(alighting_stop.get("location") or {})},
         "plannedDeparture": planned_time(departure),
@@ -353,17 +405,19 @@ def normalise_detail(payload: dict[str, Any], boarded: str, alighted: str) -> di
     return detail
 
 
-def save_journey(detail: dict[str, Any]) -> int:
+def save_journey(detail: dict[str, Any], direction: Optional[str], reason: Optional[str], detailed_reason: Optional[str]) -> int:
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute(
             """
             INSERT INTO journeys (
                 travel_date, boarded_crs, alighted_crs, service_identity, departure_date,
-                operator_code, operator_name, train_reporting_identity, service_origin_name,
-                service_destination_name, planned_departure, actual_departure,
-                departure_lateness_minutes, planned_arrival, actual_arrival,
-                arrival_lateness_minutes, platform_departure, platform_arrival, raw_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                operator_code, operator_name, train_reporting_identity,
+                service_origin_crs, service_destination_crs,
+                planned_departure, actual_departure, departure_lateness_minutes,
+                planned_arrival, actual_arrival, arrival_lateness_minutes,
+                platform_departure, platform_arrival,
+                direction, reason, detailed_reason, raw_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 detail.get("travelDate"),
@@ -374,8 +428,8 @@ def save_journey(detail: dict[str, Any]) -> int:
                 detail.get("operatorCode"),
                 detail.get("operatorName"),
                 detail.get("trainReportingIdentity"),
-                detail.get("serviceOrigin"),
-                detail.get("serviceDestination"),
+                detail.get("serviceOriginCrs"),
+                detail.get("serviceDestinationCrs"),
                 detail.get("plannedDeparture"),
                 detail.get("actualDeparture"),
                 detail.get("departureLatenessMinutes"),
@@ -384,6 +438,9 @@ def save_journey(detail: dict[str, Any]) -> int:
                 detail.get("arrivalLatenessMinutes"),
                 detail.get("platformDeparture"),
                 detail.get("platformArrival"),
+                direction,
+                reason,
+                detailed_reason,
                 json.dumps(detail.get("raw"), ensure_ascii=False),
             ),
         )
@@ -410,6 +467,15 @@ def exchange_token(token: str = Depends(get_rtt_token)) -> dict[str, Any]:
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "rttVersion": RTT_API_VERSION}
+
+
+@app.get("/api/stations-local")
+def stations_local() -> dict[str, Any]:
+    init_db()
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT crs, name FROM stations ORDER BY name").fetchall()
+    return {"stations": [dict(r) for r in rows]}
 
 
 @app.get("/api/stations")
@@ -480,7 +546,7 @@ def resolve_service(request: ResolveRequest, token: str = Depends(get_rtt_token)
     detail = normalise_detail(payload, request.originCrs, request.destinationCrs)
     saved_id: int | None = None
     if request.save:
-        saved_id = save_journey(detail)
+        saved_id = save_journey(detail, request.direction, request.reason, request.detailedReason)
     return {"journeyId": saved_id, "detail": detail}
 
 
@@ -493,10 +559,10 @@ def list_journeys(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any
             """
             SELECT id, travel_date, boarded_crs, alighted_crs, service_identity,
                    departure_date, operator_name, train_reporting_identity,
-                   service_origin_name, service_destination_name, planned_departure,
+                   service_origin_crs, service_destination_crs, planned_departure,
                    actual_departure, departure_lateness_minutes, planned_arrival,
                    actual_arrival, arrival_lateness_minutes, platform_departure,
-                   platform_arrival, created_at
+                   platform_arrival, direction, reason, detailed_reason, created_at
             FROM journeys
             ORDER BY travel_date DESC, id DESC
             LIMIT ?

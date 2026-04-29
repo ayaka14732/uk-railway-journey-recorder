@@ -5,6 +5,8 @@
  */
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
+type Station = { crs: string; name: string };
+
 type SearchForm = {
   travelDate: string;
   originCrs: string;
@@ -20,8 +22,8 @@ type Candidate = {
   trainReportingIdentity?: string;
   operatorCode?: string;
   operatorName?: string;
-  serviceOrigin?: string;
-  serviceDestination?: string;
+  serviceOriginCrs?: string;
+  serviceDestinationCrs?: string;
   plannedDeparture?: string;
   actualDeparture?: string;
   departureDisplay?: string;
@@ -38,8 +40,8 @@ type JourneyDetail = {
   departureDate?: string;
   trainReportingIdentity?: string;
   operatorName?: string;
-  serviceOrigin?: string;
-  serviceDestination?: string;
+  serviceOriginCrs?: string;
+  serviceDestinationCrs?: string;
   boarded: { crs: string; name: string };
   alighted: { crs: string; name: string };
   plannedDeparture?: string;
@@ -60,8 +62,8 @@ type StoredJourney = {
   service_identity: string;
   operator_name?: string;
   train_reporting_identity?: string;
-  service_origin_name?: string;
-  service_destination_name?: string;
+  service_origin_crs?: string;
+  service_destination_crs?: string;
   planned_departure?: string;
   actual_departure?: string;
   departure_lateness_minutes?: number | null;
@@ -70,6 +72,9 @@ type StoredJourney = {
   actual_arrival?: string;
   arrival_lateness_minutes?: number | null;
   platform_arrival?: string | null;
+  direction?: string;
+  reason?: string;
+  detailed_reason?: string;
 };
 
 const DEFAULT_FORM: SearchForm = {
@@ -111,6 +116,69 @@ async function apiJson<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(detail);
   }
   return body as T;
+}
+
+function StationInput({
+  stations,
+  value,
+  onChange,
+}: {
+  stations: Station[];
+  value: string;
+  onChange: (crs: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const matched = useMemo(() => stations.find((s) => s.crs === value), [stations, value]);
+  const displayLabel = matched ? `${matched.name} (${matched.crs})` : value;
+
+  const filtered = useMemo(() => {
+    if (!editing) return [];
+    const q = query.toLowerCase().trim();
+    if (!q) return [];
+    return stations
+      .filter((s) => s.name.toLowerCase().includes(q) || s.crs.toLowerCase().startsWith(q))
+      .slice(0, 15);
+  }, [stations, query, editing]);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setEditing(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div className="station-input" ref={ref}>
+      <input
+        value={editing ? query : displayLabel}
+        readOnly={!editing}
+        onFocus={() => { setEditing(true); setQuery(""); }}
+        onChange={(e) => setQuery(e.target.value)}
+        onBlur={() => setTimeout(() => { setEditing(false); setQuery(""); }, 150)}
+        placeholder={editing ? "Type station name or CRS…" : undefined}
+      />
+      {editing && filtered.length > 0 && (
+        <div className="station-dropdown">
+          {filtered.map((s) => (
+            <div
+              key={s.crs}
+              className="station-option"
+              onMouseDown={() => { onChange(s.crs); setEditing(false); setQuery(""); }}
+            >
+              <span>{s.name}</span><span className="station-crs">{s.crs}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Home() {
@@ -167,8 +235,29 @@ export default function Home() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [history, setHistory] = useState<StoredJourney[]>([]);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
+  const [pendingCandidate, setPendingCandidate] = useState<Candidate | null>(null);
+  const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
+  const [addReason, setAddReason] = useState<"Love" | "Leisure" | "Life" | "Work">("Love");
+  const [addDetailedReason, setAddDetailedReason] = useState<string>("");
+  const [stations, setStations] = useState<Station[]>([]);
+
+  const stationMap = useMemo(() => new Map(stations.map((s) => [s.crs, s.name])), [stations]);
+
+  function stationLabel(crs?: string): string {
+    if (!crs) return "—";
+    return stationMap.get(crs) || crs;
+  }
 
   const candidateCount = useMemo(() => candidates.length, [candidates]);
+
+  async function loadStations() {
+    try {
+      const data = await apiJson<{ stations: Station[] }>("/api/stations-local");
+      setStations(data.stations);
+    } catch {
+      // silently fail — station names are cosmetic
+    }
+  }
 
   async function loadHistory() {
     try {
@@ -181,6 +270,7 @@ export default function Home() {
 
   useEffect(() => {
     loadHistory();
+    loadStations();
   }, []);
 
   async function search(event: FormEvent<HTMLFormElement>) {
@@ -208,8 +298,9 @@ export default function Home() {
     }
   }
 
-  async function addJourney(candidate: Candidate) {
+  async function addJourney(candidate: Candidate, direction: string, reason: string, detailedReason: string) {
     setSavingId(candidate.identity);
+    setPendingCandidate(null);
     setMessage("");
     try {
       const token = await getEffectiveToken();
@@ -223,6 +314,9 @@ export default function Home() {
           identity: candidate.identity,
           departureDate: candidate.departureDate || form.travelDate,
           save: true,
+          direction,
+          reason,
+          detailedReason,
         }),
       });
       setSavedKeys((previous) => new Set(previous).add(`${candidate.identity}-${candidate.departureDate}`));
@@ -278,11 +372,50 @@ export default function Home() {
         </div>
       )}
 
+      {pendingCandidate && (
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPendingCandidate(null); }}>
+          <div className="token-dialog">
+            <div className="token-dialog-header">
+              <span>Add Journey — {pendingCandidate.trainReportingIdentity || pendingCandidate.identity}</span>
+              <button type="button" className="token-dialog-close" onClick={() => setPendingCandidate(null)}>×</button>
+            </div>
+            <div className="add-dialog-body">
+              <div className="add-dialog-field">
+                <span>Direction</span>
+                <div className="add-dialog-options">
+                  {(["Outbound", "Inbound"] as const).map((d) => (
+                    <button type="button" key={d} className={`add-dialog-option${addDirection === d ? " selected" : ""}`} onClick={() => setAddDirection(d)}>{d}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="add-dialog-field">
+                <span>Reason</span>
+                <div className="add-dialog-options">
+                  {(["Love", "Leisure", "Life", "Work"] as const).map((r) => (
+                    <button type="button" key={r} className={`add-dialog-option${addReason === r ? " selected" : ""}`} onClick={() => setAddReason(r)}>{r}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="add-dialog-field">
+                <span>Detail</span>
+                <input type="text" className="add-dialog-input" value={addDetailedReason} onChange={(e) => setAddDetailedReason(e.target.value)} placeholder="Optional note" />
+              </div>
+            </div>
+            <div className="token-dialog-actions">
+              <button type="button" onClick={() => addJourney(pendingCandidate, addDirection, addReason, addDetailedReason)} disabled={savingId === pendingCandidate.identity}>
+                {savingId === pendingCandidate.identity ? "Adding…" : "Add to history"}
+              </button>
+              <button type="button" onClick={() => setPendingCandidate(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="search-panel">
         <form className="search-form" onSubmit={search}>
           <label>Date<input type="date" value={form.travelDate} onChange={(event) => setForm({ ...form, travelDate: event.target.value })} /></label>
-          <label>From<input value={form.originCrs} maxLength={8} onChange={(event) => setForm({ ...form, originCrs: event.target.value.toUpperCase() })} /></label>
-          <label>To<input value={form.destinationCrs} maxLength={8} onChange={(event) => setForm({ ...form, destinationCrs: event.target.value.toUpperCase() })} /></label>
+          <label>From<StationInput stations={stations} value={form.originCrs} onChange={(crs) => setForm({ ...form, originCrs: crs })} /></label>
+          <label>To<StationInput stations={stations} value={form.destinationCrs} onChange={(crs) => setForm({ ...form, destinationCrs: crs })} /></label>
           <label>Near<input type="time" value={form.time} onChange={(event) => setForm({ ...form, time: event.target.value })} /></label>
           <label>Window<select value={form.windowMinutes} onChange={(event) => setForm({ ...form, windowMinutes: Number(event.target.value) })}>
             <option value={60}>60 min</option>
@@ -301,7 +434,7 @@ export default function Home() {
         <div className="section-title"><h2>Candidate services</h2><span>{candidateCount} rows</span></div>
         <div className="plain-table candidate-table">
           <div className="table-head candidate-row">
-            <span>Service</span><span>Route</span><span>Operator</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span><span>Action</span>
+            <span>Service</span><span>From</span><span>To</span><span>Operator</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span><span>Action</span>
           </div>
           {candidates.length === 0 ? (
             <div className="empty-row">No search results yet.</div>
@@ -311,7 +444,8 @@ export default function Home() {
             return (
               <div className="data-row candidate-row" key={key}>
                 <strong>{candidate.trainReportingIdentity || candidate.identity}</strong>
-                <span className="truncate">{candidate.serviceOrigin || form.originCrs} to {candidate.serviceDestination || form.destinationCrs}</span>
+                <span className="truncate">{stationLabel(candidate.serviceOriginCrs || form.originCrs)}</span>
+                <span className="truncate">{stationLabel(candidate.serviceDestinationCrs || form.destinationCrs)}</span>
                 <span className="truncate">{candidate.operatorName || candidate.operatorCode || "—"}</span>
                 <span>{timeOnly(candidate.plannedDeparture)}</span>
                 <span>{timeOnly(candidate.actualDeparture || candidate.departureDisplay)}</span>
@@ -319,7 +453,7 @@ export default function Home() {
                 <span>{timeOnly(candidate.plannedArrival)}</span>
                 <span>{timeOnly(candidate.actualArrival || candidate.arrivalDisplay)}</span>
                 <b className={delayClass(candidate.arrivalLatenessMinutes)}>{delayText(candidate.arrivalLatenessMinutes)}</b>
-                <button type="button" onClick={() => addJourney(candidate)} disabled={savingId === candidate.identity || saved}>{saved ? "Added" : savingId === candidate.identity ? "Adding" : "Add"}</button>
+                <button type="button" onClick={() => { setPendingCandidate(candidate); setAddDirection("Outbound"); setAddReason("Love"); setAddDetailedReason(""); }} disabled={savingId === candidate.identity || saved}>{saved ? "Added" : savingId === candidate.identity ? "Adding" : "Add"}</button>
               </div>
             );
           })}
@@ -330,15 +464,20 @@ export default function Home() {
         <div className="section-title"><h2>Journey history</h2><button type="button" onClick={loadHistory}>Refresh</button></div>
         <div className="plain-table history-table">
           <div className="table-head history-row">
-            <span>Date</span><span>Journey</span><span>Service</span><span>Dep plat</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span>
+            <span>Date</span><span>From</span><span>To</span><span>Service</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Dep plat</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span>
           </div>
           {history.length === 0 ? (
             <div className="empty-row">No journeys saved.</div>
           ) : history.map((item) => (
             <div className="data-row history-row" key={item.id}>
               <span>{item.travel_date}</span>
-              <strong>{item.boarded_crs} to {item.alighted_crs}</strong>
+              <span className="truncate">{stationLabel(item.boarded_crs)}</span>
+              <span className="truncate">{stationLabel(item.alighted_crs)}</span>
               <span className="truncate">{item.train_reporting_identity || item.service_identity} · {item.operator_name || "—"}</span>
+              <span className="truncate">{stationLabel(item.service_origin_crs)}</span>
+              <span className="truncate">{stationLabel(item.service_destination_crs)}</span>
+              <span>{item.direction ?? "—"}</span>
+              <span>{item.reason ?? "—"}</span>
               <span>{item.platform_departure ?? "—"}</span>
               <span>{timeOnly(item.planned_departure)}</span>
               <span>{timeOnly(item.actual_departure)}</span>
