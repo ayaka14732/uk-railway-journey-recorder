@@ -118,7 +118,7 @@
   body {
     @apply bg-background text-foreground;
     margin: 0;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: "SBB", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-feature-settings: "tnum" 1;
   }
   button:not(:disabled),
@@ -174,11 +174,6 @@
   background: var(--sbb-red);
   color: #ffffff;
   font-weight: 700;
-}
-
-.plain-header p {
-  margin: 0;
-  color: #555555;
 }
 
 .search-panel,
@@ -321,6 +316,7 @@
   background: #ffffff;
   color: #111111;
   font: inherit;
+  font-weight: 400;
 }
 
 .station-input {
@@ -338,6 +334,7 @@
   background: #ffffff;
   color: #111111;
   font: inherit;
+  font-weight: 400;
   cursor: pointer;
 }
 
@@ -470,13 +467,13 @@
 }
 
 .candidate-row {
-  min-width: 1160px;
-  grid-template-columns: 95px minmax(130px, 0.7fr) minmax(130px, 0.7fr) minmax(130px, 0.9fr) 82px 82px 78px 82px 82px 78px 82px;
+  min-width: 1180px;
+  grid-template-columns: 95px 160px 140px minmax(120px, 1fr) 90px 90px 78px 90px 90px 78px 82px;
 }
 
 .history-row {
-  min-width: 1450px;
-  grid-template-columns: 100px 120px 120px minmax(150px, 1fr) 110px 110px 68px 72px 55px 82px 82px 78px 55px 82px 82px 78px;
+  min-width: 1620px;
+  grid-template-columns: 100px 155px 155px 80px minmax(130px, 1fr) 155px 155px 80px 68px 70px 90px 90px 78px 70px 90px 90px 78px;
 }
 
 .truncate {

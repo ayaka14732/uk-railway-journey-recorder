@@ -333,7 +333,6 @@ export default function Home() {
     <main className="plain-shell">
       <header className="plain-header">
         <div className="brand-mark">UK Rail History</div>
-        <p>Search Realtime Trains services and add journeys directly to the local history database.</p>
         <button type="button" className="token-header-btn" onClick={() => { setDraftToken(apiToken); setDialogStatus("idle"); setShowTokenDialog(true); }}>
           {apiToken ? "Token ✓" : "Set token"}
         </button>
@@ -412,6 +411,7 @@ export default function Home() {
       )}
 
       <section className="search-panel">
+        <div className="section-title"><h2>New Journey</h2></div>
         <form className="search-form" onSubmit={search}>
           <label>Date<input type="date" value={form.travelDate} onChange={(event) => setForm({ ...form, travelDate: event.target.value })} /></label>
           <label>From<StationInput stations={stations} value={form.originCrs} onChange={(crs) => setForm({ ...form, originCrs: crs })} /></label>
@@ -425,13 +425,12 @@ export default function Home() {
           </select></label>
           <button type="submit" disabled={loading}>{loading ? "Searching" : "Search"}</button>
         </form>
-        <div className="hint-line">Example: 2026-04-27, MKC to EUS, near 18:55.</div>
       </section>
 
       {message && <div className="message-line" role="status">{message}</div>}
 
       <section className="table-section">
-        <div className="section-title"><h2>Candidate services</h2><span>{candidateCount} rows</span></div>
+        <div className="section-title"><h2>Candidate Services</h2><span>{candidateCount} rows</span></div>
         <div className="plain-table candidate-table">
           <div className="table-head candidate-row">
             <span>Service</span><span>From</span><span>To</span><span>Operator</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span><span>Action</span>
@@ -461,10 +460,10 @@ export default function Home() {
       </section>
 
       <section className="table-section">
-        <div className="section-title"><h2>Journey history</h2><button type="button" onClick={loadHistory}>Refresh</button></div>
+        <div className="section-title"><h2>Journey History</h2><button type="button" onClick={loadHistory}>Refresh</button></div>
         <div className="plain-table history-table">
           <div className="table-head history-row">
-            <span>Date</span><span>From</span><span>To</span><span>Service</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Dep plat</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span>
+            <span>Date</span><span>From</span><span>To</span><span>Service</span><span>Operator</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Dep plat</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span>
           </div>
           {history.length === 0 ? (
             <div className="empty-row">No journeys saved.</div>
@@ -473,7 +472,8 @@ export default function Home() {
               <span>{item.travel_date}</span>
               <span className="truncate">{stationLabel(item.boarded_crs)}</span>
               <span className="truncate">{stationLabel(item.alighted_crs)}</span>
-              <span className="truncate">{item.train_reporting_identity || item.service_identity} · {item.operator_name || "—"}</span>
+              <span>{item.train_reporting_identity || item.service_identity}</span>
+              <span className="truncate">{item.operator_name || "—"}</span>
               <span className="truncate">{stationLabel(item.service_origin_crs)}</span>
               <span className="truncate">{stationLabel(item.service_destination_crs)}</span>
               <span>{item.direction ?? "—"}</span>
