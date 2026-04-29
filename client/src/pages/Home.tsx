@@ -481,7 +481,7 @@ export default function Home() {
               <div className="stats-chart">
                 <div className="stats-chart-title">By Operator</div>
                 <PieChart width={260} height={240}>
-                  <Pie data={operatorData} cx={130} cy={100} outerRadius={85} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
+                  <Pie data={operatorData} cx={130} cy={115} outerRadius={85} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
                     {operatorData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v, n) => [v, n]} />
@@ -491,7 +491,7 @@ export default function Home() {
               <div className="stats-chart">
                 <div className="stats-chart-title">By Reason</div>
                 <PieChart width={260} height={240}>
-                  <Pie data={reasonData} cx={130} cy={100} outerRadius={85} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
+                  <Pie data={reasonData} cx={130} cy={115} outerRadius={85} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
                     {reasonData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v, n) => [v, n]} />
