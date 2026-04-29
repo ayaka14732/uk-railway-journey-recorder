@@ -638,6 +638,16 @@
   color: #666666;
 }
 
+.operator-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
 .not-found-page {
   min-height: 100vh;
   display: grid;

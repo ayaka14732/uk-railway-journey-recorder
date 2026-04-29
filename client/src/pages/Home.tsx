@@ -80,6 +80,31 @@ type StoredJourney = {
 
 const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
 
+const OPERATOR_COLORS: Record<string, string> = {
+  "Avanti West Coast": "004354",
+  "c2c": "b7007c",
+  "Caledonian Sleeper": "1d2e35",
+  "Chiltern Railways": "00bfff",
+  "CrossCountry": "660f21",
+  "East Midlands Railway": "713563",
+  "Great Northern": "6c2d7e",
+  "Great Western Railway": "0a493e",
+  "Greater Anglia": "d70428",
+  "Heathrow Express": "532e63",
+  "Hull Trains": "de005c",
+  "LNER": "ce0e2d",
+  "Lumo": "2b6ef5",
+  "Northern": "0f0d78",
+  "ScotRail": "1e467d",
+  "South Western Railway": "24398c",
+  "Southeastern": "389cff",
+  "Southern": "8cc63e",
+  "Stansted Express": "6b717a",
+  "Thameslink": "ff5aa4",
+  "TransPennine Express": "09a4ec",
+  "Transport for Wales": "ff0000",
+};
+
 const DEFAULT_FORM: SearchForm = {
   travelDate: "2026-04-27",
   originCrs: "MKC",
@@ -105,6 +130,25 @@ function timeOnly(value?: string) {
   if (!value) return "—";
   const match = value.match(/T(\d{2}:\d{2})/);
   return match ? match[1] : value.slice(0, 5);
+}
+
+function operatorFg(hex: string): string {
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return L > 0.179 ? "#000000" : "#ffffff";
+}
+
+function OperatorBadge({ name }: { name: string }) {
+  const hex = OPERATOR_COLORS[name];
+  if (!hex) return <>{name}</>;
+  return (
+    <span className="operator-badge" style={{ backgroundColor: `#${hex}`, color: operatorFg(hex) }}>
+      {name}
+    </span>
+  );
 }
 
 async function apiJson<T>(url: string, options?: RequestInit): Promise<T> {
@@ -482,7 +526,7 @@ export default function Home() {
                 <div className="stats-chart-title">By Operator</div>
                 <PieChart width={260} height={240}>
                   <Pie data={operatorData} cx={130} cy={115} outerRadius={85} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
-                    {operatorData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                    {operatorData.map((entry, i) => <Cell key={i} fill={OPERATOR_COLORS[entry.name] ? `#${OPERATOR_COLORS[entry.name]}` : CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v, n) => [v, n]} />
                   <Legend />
@@ -537,7 +581,7 @@ export default function Home() {
                 <span>{candidate.trainReportingIdentity || candidate.identity}</span>
                 <span className="truncate">{stationLabel(candidate.serviceOriginCrs)}</span>
                 <span className="truncate">{stationLabel(candidate.serviceDestinationCrs)}</span>
-                <span className="truncate">{candidate.operatorName || candidate.operatorCode || "—"}</span>
+                <span className="truncate">{candidate.operatorName ? <OperatorBadge name={candidate.operatorName} /> : candidate.operatorCode || "—"}</span>
                 <span>{candidate.platformDeparture ?? "—"}</span>
                 <span>{timeOnly(candidate.plannedDeparture)}</span>
                 <b className={delayClass(candidate.departureLatenessMinutes)}>{delayText(candidate.departureLatenessMinutes)}</b>
@@ -563,7 +607,7 @@ export default function Home() {
             <div className="data-row history-row" key={item.id}>
               <span>{item.travel_date.replace(/-/g, "")}</span>
               <span>{item.train_reporting_identity || item.service_identity}</span>
-              <span className="truncate">{item.operator_name || "—"}</span>
+              <span className="truncate">{item.operator_name ? <OperatorBadge name={item.operator_name} /> : "—"}</span>
               <span className="truncate">{stationLabel(item.boarded_crs)}</span>
               <span className="truncate">{stationLabel(item.alighted_crs)}</span>
               <span className="truncate">{stationLabel(item.service_origin_crs)}</span>
