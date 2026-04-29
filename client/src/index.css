@@ -563,7 +563,7 @@
 
 .candidate-row {
   min-width: 1140px;
-  grid-template-columns: 95px 155px 155px minmax(120px, 1fr) 70px 90px 78px 70px 90px 78px 82px;
+  grid-template-columns: 95px 190px 190px minmax(120px, 1fr) 70px 90px 78px 70px 90px 78px 82px;
 }
 
 .history-row {
