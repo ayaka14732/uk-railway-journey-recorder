@@ -260,6 +260,15 @@ export default function Home() {
     }
   }
 
+  async function deleteJourney(id: number) {
+    try {
+      await apiJson(`/api/journeys/${id}`, { method: "DELETE" });
+      setHistory((prev) => prev.filter((j) => j.id !== id));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function loadHistory() {
     try {
       const data = await apiJson<{ journeys: StoredJourney[] }>("/api/journeys?limit=80");
@@ -465,7 +474,7 @@ export default function Home() {
         <div className="section-title"><h2>Journey History</h2><button type="button" onClick={loadHistory}>Refresh</button></div>
         <div className="plain-table history-table">
           <div className="table-head history-row">
-            <span>Date</span><span>Service</span><span>Operator</span><span>From</span><span>To</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span>
+            <span>Date</span><span>Service</span><span>Operator</span><span>From</span><span>To</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span></span>
           </div>
           {history.length === 0 ? (
             <div className="empty-row">No journeys saved.</div>
@@ -486,6 +495,7 @@ export default function Home() {
               <span>{item.platform_arrival ?? "—"}</span>
               <span>{timeOnly(item.planned_arrival)}</span>
               <b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b>
+              <button type="button" className="del-btn" onClick={() => deleteJourney(item.id)}>Del</button>
             </div>
           ))}
         </div>

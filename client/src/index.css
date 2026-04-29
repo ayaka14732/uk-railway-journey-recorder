@@ -414,9 +414,24 @@
   color: var(--sbb-red);
 }
 
+.del-btn {
+  border: 1px solid #bbbbbb;
+  background: transparent;
+  color: #888888;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.del-btn:hover {
+  border-color: var(--sbb-red);
+  color: var(--sbb-red);
+}
+
 .search-form button:not(.swap-btn),
 .section-title button,
-.data-row button {
+.data-row button:not(.del-btn) {
   border: 1px solid var(--sbb-red);
   border-radius: 0;
   background: var(--sbb-red);
@@ -507,7 +522,7 @@
 
 .history-row {
   min-width: 1440px;
-  grid-template-columns: 70px 80px minmax(130px, 1fr) 190px 190px 190px 190px 80px 68px 70px 90px 78px 70px 90px 78px;
+  grid-template-columns: 70px 80px minmax(130px, 1fr) 190px 190px 190px 190px 80px 68px 70px 90px 78px 70px 90px 78px 48px;
 }
 
 .truncate {
