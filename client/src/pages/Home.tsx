@@ -263,7 +263,12 @@ export default function Home() {
   async function loadHistory() {
     try {
       const data = await apiJson<{ journeys: StoredJourney[] }>("/api/journeys?limit=80");
-      setHistory(data.journeys);
+      const sorted = [...data.journeys].sort((a, b) => {
+        const dateCmp = b.travel_date.localeCompare(a.travel_date);
+        if (dateCmp !== 0) return dateCmp;
+        return (a.planned_departure ?? "").localeCompare(b.planned_departure ?? "");
+      });
+      setHistory(sorted);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     }
