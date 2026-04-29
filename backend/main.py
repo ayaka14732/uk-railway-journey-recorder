@@ -70,7 +70,7 @@ class SearchRequest(BaseModel):
     originCrs: str = Field(..., min_length=2, max_length=8)
     destinationCrs: str = Field(..., min_length=2, max_length=8)
     time: str = Field(..., pattern=r"^\d{2}:\d{2}$")
-    windowMinutes: int = Field(default=120, ge=15, le=360)
+    windowMinutes: int = Field(default=10, ge=8, le=180)
 
 
 class ResolveRequest(BaseModel):
@@ -129,10 +129,8 @@ def init_db() -> None:
                 service_origin_crs TEXT,
                 service_destination_crs TEXT,
                 planned_departure TEXT,
-                actual_departure TEXT,
                 departure_lateness_minutes INTEGER,
                 planned_arrival TEXT,
-                actual_arrival TEXT,
                 arrival_lateness_minutes INTEGER,
                 platform_departure TEXT,
                 platform_arrival TEXT,
@@ -276,6 +274,7 @@ def normalise_candidate(item: dict[str, Any], requested_origin: str, requested_d
     metadata = item.get("scheduleMetadata") or {}
     operator = metadata.get("operator") or {}
     dep = (item.get("temporalData") or {}).get("departure") or temporal_for_public_stop(item)
+    dep_platform = ((item.get("locationMetadata") or {}).get("platform") or {}).get("actual") or ((item.get("locationMetadata") or {}).get("platform") or {}).get("planned")
     destinations = item.get("destination") or []
     destination_stop = destinations[0] if destinations else {}
     arr = ((destination_stop.get("temporalData") or {}).get("arrival") or temporal_for_public_stop(destination_stop)) if destination_stop else {}
@@ -294,6 +293,7 @@ def normalise_candidate(item: dict[str, Any], requested_origin: str, requested_d
         "actualDeparture": actual_time(dep),
         "departureDisplay": display_time(actual_time(dep) or planned_time(dep)),
         "departureLatenessMinutes": lateness(dep),
+        "platformDeparture": dep_platform,
         "plannedArrival": planned_time(arr),
         "actualArrival": actual_time(arr),
         "arrivalDisplay": display_time(actual_time(arr) or planned_time(arr)),
@@ -313,8 +313,6 @@ def find_stop(locations: list[dict[str, Any]], requested_code: str) -> Optional[
 
 
 def enrich_candidate_with_detail(candidate: dict[str, Any], boarded: str, alighted: str, token: str) -> dict[str, Any]:
-    if candidate.get("plannedArrival") or candidate.get("actualArrival"):
-        return candidate
     identity = candidate.get("identity")
     departure_date = candidate.get("departureDate")
     if not identity or not departure_date:
@@ -326,10 +324,14 @@ def enrich_candidate_with_detail(candidate: dict[str, Any], boarded: str, alight
         return candidate
     candidate.update(
         {
-            "plannedArrival": detail.get("plannedArrival"),
-            "actualArrival": detail.get("actualArrival"),
-            "arrivalDisplay": detail.get("arrivalDisplay"),
-            "arrivalLatenessMinutes": detail.get("arrivalLatenessMinutes"),
+            "serviceOriginCrs": detail.get("serviceOriginCrs") or candidate.get("serviceOriginCrs"),
+            "serviceDestinationCrs": detail.get("serviceDestinationCrs") or candidate.get("serviceDestinationCrs"),
+            "plannedArrival": detail.get("plannedArrival") or candidate.get("plannedArrival"),
+            "actualArrival": detail.get("actualArrival") or candidate.get("actualArrival"),
+            "arrivalDisplay": detail.get("arrivalDisplay") or candidate.get("arrivalDisplay"),
+            "arrivalLatenessMinutes": detail.get("arrivalLatenessMinutes") if detail.get("arrivalLatenessMinutes") is not None else candidate.get("arrivalLatenessMinutes"),
+            "platformDeparture": detail.get("platformDeparture") or candidate.get("platformDeparture"),
+            "platformArrival": detail.get("platformArrival"),
         }
     )
     return candidate
@@ -413,11 +415,11 @@ def save_journey(detail: dict[str, Any], direction: Optional[str], reason: Optio
                 travel_date, boarded_crs, alighted_crs, service_identity, departure_date,
                 operator_code, operator_name, train_reporting_identity,
                 service_origin_crs, service_destination_crs,
-                planned_departure, actual_departure, departure_lateness_minutes,
-                planned_arrival, actual_arrival, arrival_lateness_minutes,
+                planned_departure, departure_lateness_minutes,
+                planned_arrival, arrival_lateness_minutes,
                 platform_departure, platform_arrival,
                 direction, reason, detailed_reason, raw_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 detail.get("travelDate"),
@@ -431,10 +433,8 @@ def save_journey(detail: dict[str, Any], direction: Optional[str], reason: Optio
                 detail.get("serviceOriginCrs"),
                 detail.get("serviceDestinationCrs"),
                 detail.get("plannedDeparture"),
-                detail.get("actualDeparture"),
                 detail.get("departureLatenessMinutes"),
                 detail.get("plannedArrival"),
-                detail.get("actualArrival"),
                 detail.get("arrivalLatenessMinutes"),
                 detail.get("platformDeparture"),
                 detail.get("platformArrival"),
@@ -499,8 +499,8 @@ def stations(q: str = Query(default="", min_length=0, max_length=80), token: str
 @app.post("/api/search-services")
 def search_services(request: SearchRequest, token: str = Depends(get_rtt_token)) -> dict[str, Any]:
     requested_dt = datetime.fromisoformat(f"{request.travelDate}T{request.time}:00")
-    time_from = requested_dt - timedelta(minutes=30)
-    time_to = time_from + timedelta(minutes=request.windowMinutes)
+    time_from = requested_dt - timedelta(minutes=request.windowMinutes)
+    time_to = requested_dt + timedelta(minutes=request.windowMinutes)
     payload = rtt_get(
         "/gb-nr/location",
         token,
@@ -560,8 +560,8 @@ def list_journeys(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any
             SELECT id, travel_date, boarded_crs, alighted_crs, service_identity,
                    departure_date, operator_name, train_reporting_identity,
                    service_origin_crs, service_destination_crs, planned_departure,
-                   actual_departure, departure_lateness_minutes, planned_arrival,
-                   actual_arrival, arrival_lateness_minutes, platform_departure,
+                   departure_lateness_minutes, planned_arrival,
+                   arrival_lateness_minutes, platform_departure,
                    platform_arrival, direction, reason, detailed_reason, created_at
             FROM journeys
             ORDER BY travel_date DESC, id DESC

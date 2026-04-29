@@ -319,6 +319,23 @@
   font-weight: 400;
 }
 
+.input-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.input-with-unit input {
+  flex: 1;
+  min-width: 0;
+}
+
+.input-with-unit > span {
+  flex-shrink: 0;
+  color: #666666;
+}
+
 .station-input {
   position: relative;
   min-width: 0;
@@ -467,13 +484,13 @@
 }
 
 .candidate-row {
-  min-width: 1180px;
-  grid-template-columns: 95px 160px 140px minmax(120px, 1fr) 90px 90px 78px 90px 90px 78px 82px;
+  min-width: 1140px;
+  grid-template-columns: 95px 155px 155px minmax(120px, 1fr) 70px 90px 78px 70px 90px 78px 82px;
 }
 
 .history-row {
-  min-width: 1620px;
-  grid-template-columns: 100px 155px 155px 80px minmax(130px, 1fr) 155px 155px 80px 68px 70px 90px 90px 78px 70px 90px 90px 78px;
+  min-width: 1440px;
+  grid-template-columns: 70px 80px minmax(130px, 1fr) 190px 190px 190px 190px 80px 68px 70px 90px 78px 70px 90px 78px;
 }
 
 .truncate {

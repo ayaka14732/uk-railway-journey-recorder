@@ -28,10 +28,12 @@ type Candidate = {
   actualDeparture?: string;
   departureDisplay?: string;
   departureLatenessMinutes?: number | null;
+  platformDeparture?: string | null;
   plannedArrival?: string;
   actualArrival?: string;
   arrivalDisplay?: string;
   arrivalLatenessMinutes?: number | null;
+  platformArrival?: string | null;
   isCancelled?: boolean;
 };
 
@@ -65,11 +67,9 @@ type StoredJourney = {
   service_origin_crs?: string;
   service_destination_crs?: string;
   planned_departure?: string;
-  actual_departure?: string;
   departure_lateness_minutes?: number | null;
   platform_departure?: string | null;
   planned_arrival?: string;
-  actual_arrival?: string;
   arrival_lateness_minutes?: number | null;
   platform_arrival?: string | null;
   direction?: string;
@@ -82,7 +82,7 @@ const DEFAULT_FORM: SearchForm = {
   originCrs: "MKC",
   destinationCrs: "EUS",
   time: "18:55",
-  windowMinutes: 150,
+  windowMinutes: 10,
 };
 
 function delayText(value?: number | null) {
@@ -245,7 +245,8 @@ export default function Home() {
 
   function stationLabel(crs?: string): string {
     if (!crs) return "—";
-    return stationMap.get(crs) || crs;
+    const name = stationMap.get(crs);
+    return name ? `${name} (${crs})` : crs;
   }
 
   const candidateCount = useMemo(() => candidates.length, [candidates]);
@@ -417,12 +418,7 @@ export default function Home() {
           <label>From<StationInput stations={stations} value={form.originCrs} onChange={(crs) => setForm({ ...form, originCrs: crs })} /></label>
           <label>To<StationInput stations={stations} value={form.destinationCrs} onChange={(crs) => setForm({ ...form, destinationCrs: crs })} /></label>
           <label>Near<input type="time" value={form.time} onChange={(event) => setForm({ ...form, time: event.target.value })} /></label>
-          <label>Window<select value={form.windowMinutes} onChange={(event) => setForm({ ...form, windowMinutes: Number(event.target.value) })}>
-            <option value={60}>60 min</option>
-            <option value={120}>120 min</option>
-            <option value={150}>150 min</option>
-            <option value={240}>240 min</option>
-          </select></label>
+          <label>Window<span className="input-with-unit"><input type="number" min={8} max={180} value={form.windowMinutes} onChange={(event) => setForm({ ...form, windowMinutes: Number(event.target.value) })} onBlur={(event) => { const v = Number(event.target.value); setForm((f) => ({ ...f, windowMinutes: Math.max(8, Math.min(180, v)) })); }} /><span>min</span></span></label>
           <button type="submit" disabled={loading}>{loading ? "Searching" : "Search"}</button>
         </form>
       </section>
@@ -433,7 +429,7 @@ export default function Home() {
         <div className="section-title"><h2>Candidate Services</h2><span>{candidateCount} rows</span></div>
         <div className="plain-table candidate-table">
           <div className="table-head candidate-row">
-            <span>Service</span><span>From</span><span>To</span><span>Operator</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span><span>Action</span>
+            <span>Service</span><span>Svc from</span><span>Svc to</span><span>Operator</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span>Action</span>
           </div>
           {candidates.length === 0 ? (
             <div className="empty-row">No search results yet.</div>
@@ -442,15 +438,15 @@ export default function Home() {
             const saved = savedKeys.has(key);
             return (
               <div className="data-row candidate-row" key={key}>
-                <strong>{candidate.trainReportingIdentity || candidate.identity}</strong>
-                <span className="truncate">{stationLabel(candidate.serviceOriginCrs || form.originCrs)}</span>
-                <span className="truncate">{stationLabel(candidate.serviceDestinationCrs || form.destinationCrs)}</span>
+                <span>{candidate.trainReportingIdentity || candidate.identity}</span>
+                <span className="truncate">{stationLabel(candidate.serviceOriginCrs)}</span>
+                <span className="truncate">{stationLabel(candidate.serviceDestinationCrs)}</span>
                 <span className="truncate">{candidate.operatorName || candidate.operatorCode || "—"}</span>
+                <span>{candidate.platformDeparture ?? "—"}</span>
                 <span>{timeOnly(candidate.plannedDeparture)}</span>
-                <span>{timeOnly(candidate.actualDeparture || candidate.departureDisplay)}</span>
                 <b className={delayClass(candidate.departureLatenessMinutes)}>{delayText(candidate.departureLatenessMinutes)}</b>
+                <span>{candidate.platformArrival ?? "—"}</span>
                 <span>{timeOnly(candidate.plannedArrival)}</span>
-                <span>{timeOnly(candidate.actualArrival || candidate.arrivalDisplay)}</span>
                 <b className={delayClass(candidate.arrivalLatenessMinutes)}>{delayText(candidate.arrivalLatenessMinutes)}</b>
                 <button type="button" onClick={() => { setPendingCandidate(candidate); setAddDirection("Outbound"); setAddReason("Love"); setAddDetailedReason(""); }} disabled={savingId === candidate.identity || saved}>{saved ? "Added" : savingId === candidate.identity ? "Adding" : "Add"}</button>
               </div>
@@ -463,28 +459,26 @@ export default function Home() {
         <div className="section-title"><h2>Journey History</h2><button type="button" onClick={loadHistory}>Refresh</button></div>
         <div className="plain-table history-table">
           <div className="table-head history-row">
-            <span>Date</span><span>From</span><span>To</span><span>Service</span><span>Operator</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Dep plat</span><span>Booked dep</span><span>Actual dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Actual arr</span><span>Arr delay</span>
+            <span>Date</span><span>Service</span><span>Operator</span><span>From</span><span>To</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span>
           </div>
           {history.length === 0 ? (
             <div className="empty-row">No journeys saved.</div>
           ) : history.map((item) => (
             <div className="data-row history-row" key={item.id}>
-              <span>{item.travel_date}</span>
-              <span className="truncate">{stationLabel(item.boarded_crs)}</span>
-              <span className="truncate">{stationLabel(item.alighted_crs)}</span>
+              <span>{item.travel_date.replace(/-/g, "")}</span>
               <span>{item.train_reporting_identity || item.service_identity}</span>
               <span className="truncate">{item.operator_name || "—"}</span>
+              <span className="truncate">{stationLabel(item.boarded_crs)}</span>
+              <span className="truncate">{stationLabel(item.alighted_crs)}</span>
               <span className="truncate">{stationLabel(item.service_origin_crs)}</span>
               <span className="truncate">{stationLabel(item.service_destination_crs)}</span>
               <span>{item.direction ?? "—"}</span>
               <span>{item.reason ?? "—"}</span>
               <span>{item.platform_departure ?? "—"}</span>
               <span>{timeOnly(item.planned_departure)}</span>
-              <span>{timeOnly(item.actual_departure)}</span>
               <b className={delayClass(item.departure_lateness_minutes)}>{delayText(item.departure_lateness_minutes)}</b>
               <span>{item.platform_arrival ?? "—"}</span>
               <span>{timeOnly(item.planned_arrival)}</span>
-              <span>{timeOnly(item.actual_arrival)}</span>
               <b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b>
             </div>
           ))}
