@@ -236,6 +236,7 @@ export default function Home() {
   const [history, setHistory] = useState<StoredJourney[]>([]);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
   const [pendingCandidate, setPendingCandidate] = useState<Candidate | null>(null);
+  const [viewingDetail, setViewingDetail] = useState<StoredJourney | null>(null);
   const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [addReason, setAddReason] = useState<"Love" | "Leisure" | "Life" | "Work">("Love");
   const [addDetailedReason, setAddDetailedReason] = useState<string>("");
@@ -425,6 +426,27 @@ export default function Home() {
         </div>
       )}
 
+      {viewingDetail && (
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setViewingDetail(null); }}>
+          <div className="token-dialog">
+            <div className="token-dialog-header">
+              <span>{viewingDetail.train_reporting_identity || viewingDetail.service_identity} — {viewingDetail.travel_date}</span>
+              <button type="button" className="token-dialog-close" onClick={() => setViewingDetail(null)}>×</button>
+            </div>
+            <div className="add-dialog-body">
+              <div className="add-dialog-field"><span>From</span><span>{stationLabel(viewingDetail.boarded_crs)}</span></div>
+              <div className="add-dialog-field"><span>To</span><span>{stationLabel(viewingDetail.alighted_crs)}</span></div>
+              <div className="add-dialog-field"><span>Direction</span><span>{viewingDetail.direction ?? "—"}</span></div>
+              <div className="add-dialog-field"><span>Reason</span><span>{viewingDetail.reason ?? "—"}</span></div>
+              <div className="add-dialog-field"><span>Detail</span><span>{viewingDetail.detailed_reason || "—"}</span></div>
+            </div>
+            <div className="token-dialog-actions">
+              <button type="button" onClick={() => setViewingDetail(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="search-panel">
         <div className="section-title"><h2>New Journey</h2></div>
         <form className="search-form" onSubmit={search}>
@@ -495,7 +517,14 @@ export default function Home() {
               <span>{item.platform_arrival ?? "—"}</span>
               <span>{timeOnly(item.planned_arrival)}</span>
               <b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b>
-              <button type="button" className="del-btn" onClick={() => deleteJourney(item.id)}>Del</button>
+              <span className="row-actions">
+                <button type="button" className="icon-btn" title="View detail" onClick={() => setViewingDetail(item)}>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><ellipse cx="6.5" cy="6.5" rx="5.5" ry="3.5"/><circle cx="6.5" cy="6.5" r="1.5"/></svg>
+                </button>
+                <button type="button" className="icon-btn del-btn" title="Delete" onClick={() => deleteJourney(item.id)}>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 3.5h9M4.5 3.5v-1h4v1M3 3.5l.8 7h5.4l.8-7"/></svg>
+                </button>
+              </span>
             </div>
           ))}
         </div>

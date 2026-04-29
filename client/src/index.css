@@ -414,24 +414,34 @@
   color: var(--sbb-red);
 }
 
-.del-btn {
-  border: 1px solid #bbbbbb;
-  background: transparent;
-  color: #888888;
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-  padding: 2px 4px;
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.del-btn:hover {
-  border-color: var(--sbb-red);
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #aaaaaa;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.icon-btn:hover {
+  color: #444444;
+}
+
+.icon-btn.del-btn:hover {
   color: var(--sbb-red);
 }
 
 .search-form button:not(.swap-btn),
 .section-title button,
-.data-row button:not(.del-btn) {
+.data-row button:not(.icon-btn) {
   border: 1px solid var(--sbb-red);
   border-radius: 0;
   background: var(--sbb-red);
@@ -441,7 +451,7 @@
 }
 
 .search-form button:not(.swap-btn):disabled,
-.data-row button:disabled {
+.data-row button:not(.icon-btn):disabled {
   border-color: #999999;
   background: #dddddd;
   color: #555555;
@@ -522,7 +532,7 @@
 
 .history-row {
   min-width: 1440px;
-  grid-template-columns: 70px 80px minmax(130px, 1fr) 190px 190px 190px 190px 80px 68px 70px 90px 78px 70px 90px 78px 48px;
+  grid-template-columns: 70px 60px minmax(130px, 1fr) 190px 190px 190px 190px 80px 68px 70px 90px 78px 70px 90px 78px 52px;
 }
 
 .truncate {
