@@ -416,6 +416,7 @@ export default function Home() {
         <form className="search-form" onSubmit={search}>
           <label>Date<input type="date" value={form.travelDate} onChange={(event) => setForm({ ...form, travelDate: event.target.value })} /></label>
           <label>From<StationInput stations={stations} value={form.originCrs} onChange={(crs) => setForm({ ...form, originCrs: crs })} /></label>
+          <button type="button" className="swap-btn" title="Swap From / To" onClick={() => setForm((f) => ({ ...f, originCrs: f.destinationCrs, destinationCrs: f.originCrs }))}>⇄</button>
           <label>To<StationInput stations={stations} value={form.destinationCrs} onChange={(crs) => setForm({ ...form, destinationCrs: crs })} /></label>
           <label>Near<input type="time" value={form.time} onChange={(event) => setForm({ ...form, time: event.target.value })} /></label>
           <label>Window<span className="input-with-unit"><input type="number" min={8} max={180} value={form.windowMinutes} onChange={(event) => setForm({ ...form, windowMinutes: Number(event.target.value) })} onBlur={(event) => { const v = Number(event.target.value); setForm((f) => ({ ...f, windowMinutes: Math.max(8, Math.min(180, v)) })); }} /><span>min</span></span></label>
