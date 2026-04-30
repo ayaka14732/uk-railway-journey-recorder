@@ -698,7 +698,7 @@ export default function Home() {
       </section>
 
       <section className="table-section">
-        <div className="section-title"><h2>Journey History</h2><button type="button" onClick={() => setSortAsc(v => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑ Asc" : "↓ Desc"}</button><button type="button" onClick={loadHistory}>Refresh</button></div>
+        <div className="section-title"><h2>Journey History</h2><div style={{display:"flex",gap:"4px"}}><button type="button" onClick={() => setSortAsc(v => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑ Asc" : "↓ Desc"}</button><button type="button" onClick={loadHistory}>Refresh</button></div></div>
         <div className="plain-table history-table">
           <table>
             <thead>
