@@ -239,6 +239,11 @@ export default function Home() {
   const [dialogStatus, setDialogStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [dialogError, setDialogError] = useState("");
   const [tokenValidUntil, setTokenValidUntil] = useState("");
+  const [rttCredentials, setRttCredentials] = useState<{
+    historyRestriction?: boolean;
+    historyRestrictToDays?: number | null;
+    entitlements?: string[];
+  } | null>(null);
   const accessTokenCache = useRef<{ token: string; expiresAt: number } | null>(null);
 
   useEffect(() => { accessTokenCache.current = null; }, [apiToken]);
@@ -249,7 +254,7 @@ export default function Home() {
     setDialogStatus("loading");
     setDialogError("");
     try {
-      const data = await apiJson<{ accessToken: string; validUntil: string }>(
+      const data = await apiJson<{ accessToken: string; validUntil: string; entitlements?: unknown }>(
         "/api/exchange-token",
         { headers: { "X-RTT-Token": t } },
       );
@@ -258,6 +263,15 @@ export default function Home() {
       localStorage.setItem("rtt_api_token", t);
       setTokenValidUntil(data.validUntil);
       setDialogStatus("ok");
+      try {
+        const info = await apiJson<{ credentials?: { historyRestriction?: boolean; historyRestrictToDays?: number | null; entitlements?: string[] } }>(
+          "/api/rtt-info",
+          { headers: { "X-RTT-Token": data.accessToken } },
+        );
+        setRttCredentials(info.credentials ?? null);
+      } catch {
+        setRttCredentials(null);
+      }
     } catch (err) {
       setDialogStatus("error");
       setDialogError(err instanceof Error ? err.message : String(err));
@@ -499,6 +513,14 @@ export default function Home() {
             {dialogStatus === "ok" && (
               <div className="token-status-ok">Token valid until {new Date(tokenValidUntil).toLocaleTimeString()}</div>
             )}
+            {dialogStatus === "ok" && rttCredentials && (
+              <div className="token-status-ok">
+                History: {rttCredentials.historyRestriction
+                  ? `${rttCredentials.historyRestrictToDays ?? 14} days`
+                  : "unrestricted"}
+                {rttCredentials.entitlements?.length ? ` · ${rttCredentials.entitlements.join(", ")}` : ""}
+              </div>
+            )}
             {dialogStatus === "error" && (
               <div className="token-status-error">{dialogError}</div>
             )}
@@ -570,7 +592,7 @@ export default function Home() {
         <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowStats(false); }}>
           <div className="token-dialog stats-dialog">
             <div className="token-dialog-header">
-              <span>Statistics — {history.length} journeys</span>
+              <span>Statistics</span>
               <button type="button" className="token-dialog-close" onClick={() => setShowStats(false)}>×</button>
             </div>
             <div className="stats-charts">
@@ -606,7 +628,7 @@ export default function Home() {
         <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowMap(false); }}>
           <div className="token-dialog map-dialog">
             <div className="token-dialog-header">
-              <span>Journey Map — {history.length} journeys</span>
+              <span>Journey Map</span>
               <button type="button" className="token-dialog-close" onClick={() => setShowMap(false)}>×</button>
             </div>
             <div ref={mapRef} className="map-container" />

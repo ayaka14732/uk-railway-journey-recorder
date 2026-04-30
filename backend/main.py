@@ -459,7 +459,12 @@ def exchange_token(token: str = Depends(get_rtt_token)) -> dict[str, Any]:
     if not response.ok:
         raise HTTPException(status_code=401, detail="Failed to exchange token. Make sure your RTT key is the refresh token from api-portal.rtt.io.")
     data = response.json()
-    return {"accessToken": data.get("token"), "validUntil": data.get("validUntil")}
+    return {"accessToken": data.get("token"), "validUntil": data.get("validUntil"), "entitlements": data.get("entitlements")}
+
+
+@app.get("/api/rtt-info")
+def rtt_info(token: str = Depends(get_rtt_token)) -> dict[str, Any]:
+    return rtt_get("/api/info", token)
 
 
 @app.get("/api/stations-local")

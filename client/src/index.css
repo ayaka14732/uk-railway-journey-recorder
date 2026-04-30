@@ -332,14 +332,20 @@
 }
 
 .token-status-ok {
-  margin: 0 12px 12px;
+  margin: 0 12px 0;
   color: #146b2f;
-  font-weight: 700;
+  font-size: 12px;
 }
 
 .token-status-error {
-  margin: 0 12px 12px;
+  margin: 0 12px 0;
   color: var(--sbb-red);
+  font-size: 12px;
+}
+
+.token-status-ok:last-child,
+.token-status-error:last-child {
+  margin-bottom: 12px;
 }
 
 .search-form {
