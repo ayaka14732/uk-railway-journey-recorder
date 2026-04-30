@@ -462,11 +462,6 @@ def exchange_token(token: str = Depends(get_rtt_token)) -> dict[str, Any]:
     return {"accessToken": data.get("token"), "validUntil": data.get("validUntil")}
 
 
-@app.get("/api/health")
-def health() -> dict[str, Any]:
-    return {"ok": True, "rttVersion": RTT_API_VERSION}
-
-
 @app.get("/api/stations-local")
 def stations_local() -> dict[str, Any]:
     init_db()
@@ -474,21 +469,6 @@ def stations_local() -> dict[str, Any]:
         conn.row_factory = sqlite3.Row
         rows = conn.execute("SELECT crs, name, lat, long FROM stations ORDER BY name").fetchall()
     return {"stations": [dict(r) for r in rows]}
-
-
-@app.get("/api/stations")
-def stations(q: str = Query(default="", min_length=0, max_length=80), token: str = Depends(get_rtt_token)) -> dict[str, Any]:
-    query = q.strip().lower()
-    payload = rtt_get("/data/stops", token)
-    stops = payload.get("stops") or []
-    normalised = [
-        {"crs": stop.get("shortCode"), "name": stop.get("description"), "uniqueIdentity": stop.get("uniqueIdentity")}
-        for stop in stops
-        if stop.get("shortCode") and stop.get("description")
-    ]
-    if query:
-        normalised = [s for s in normalised if query in str(s.get("crs", "")).lower() or query in str(s.get("name", "")).lower()]
-    return {"stations": normalised[:50]}
 
 
 @app.post("/api/search-services")

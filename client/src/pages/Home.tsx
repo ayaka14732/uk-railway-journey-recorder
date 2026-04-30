@@ -292,7 +292,7 @@ export default function Home() {
   const [showMap, setShowMap] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
-  const [addReason, setAddReason] = useState<"Love" | "Leisure" | "Life" | "Work">("Love");
+  const [addReason, setAddReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
   const [addDetailedReason, setAddDetailedReason] = useState<string>("");
   const [stations, setStations] = useState<Station[]>([]);
 
@@ -525,7 +525,7 @@ export default function Home() {
               <div className="add-dialog-field">
                 <span>Reason</span>
                 <div className="add-dialog-options">
-                  {(["Love", "Leisure", "Life", "Work"] as const).map((r) => (
+                  {(["Leisure", "Work", "Life", "Love"] as const).map((r) => (
                     <button type="button" key={r} className={`add-dialog-option${addReason === r ? " selected" : ""}`} onClick={() => setAddReason(r)}>{r}</button>
                   ))}
                 </div>
@@ -655,7 +655,7 @@ export default function Home() {
                 <span>{candidate.platformArrival ?? "—"}</span>
                 <span>{timeOnly(candidate.plannedArrival)}</span>
                 <b className={delayClass(candidate.arrivalLatenessMinutes)}>{delayText(candidate.arrivalLatenessMinutes)}</b>
-                <button type="button" onClick={() => { setPendingCandidate(candidate); setAddDirection("Outbound"); setAddReason("Love"); setAddDetailedReason(""); }} disabled={savingId === candidate.identity || saved}>{saved ? "Added" : savingId === candidate.identity ? "Adding" : "Add"}</button>
+                <button type="button" onClick={() => { setPendingCandidate(candidate); setAddDirection("Outbound"); setAddReason("Leisure"); setAddDetailedReason(""); }} disabled={savingId === candidate.identity || saved}>{saved ? "Added" : savingId === candidate.identity ? "Adding" : "Add"}</button>
               </div>
             );
           })}
