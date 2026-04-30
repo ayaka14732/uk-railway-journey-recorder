@@ -284,6 +284,7 @@ export default function Home() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [history, setHistory] = useState<StoredJourney[]>([]);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
+  const [savedKeyById, setSavedKeyById] = useState<Map<number, string>>(() => new Map());
   const [pendingCandidate, setPendingCandidate] = useState<Candidate | null>(null);
 
   const [showStats, setShowStats] = useState(false);
@@ -352,6 +353,14 @@ export default function Home() {
     try {
       await apiJson(`/api/journeys/${id}`, { method: "DELETE" });
       setHistory((prev) => prev.filter((j) => j.id !== id));
+      setSavedKeyById((prev) => {
+        const key = prev.get(id);
+        if (!key) return prev;
+        const nextById = new Map(prev);
+        nextById.delete(id);
+        setSavedKeys((prevKeys) => { const next = new Set(prevKeys); next.delete(key); return next; });
+        return nextById;
+      });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     }
@@ -463,7 +472,11 @@ export default function Home() {
           detailedReason,
         }),
       });
-      setSavedKeys((previous) => new Set(previous).add(`${candidate.identity}-${candidate.departureDate}`));
+      const savedKey = `${candidate.identity}-${candidate.departureDate}`;
+      setSavedKeys((previous) => new Set(previous).add(savedKey));
+      if (data.journeyId !== null) {
+        setSavedKeyById((prev) => new Map(prev).set(data.journeyId!, savedKey));
+      }
       setMessage(`Added ${data.detail.identity || candidate.identity} to journey history.`);
       await loadHistory();
     } catch (error) {
