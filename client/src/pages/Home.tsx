@@ -703,7 +703,7 @@ export default function Home() {
           <table>
             <thead>
               <tr className="table-head history-row">
-                <th>Date</th><th>Operator</th><th>From</th><th>To</th><th>Svc from</th><th>Svc to</th><th>Dir</th><th>Reason</th><th>Detailed Reason</th><th>Dep plat</th><th>Booked dep</th><th>Dep delay</th><th>Arr plat</th><th>Booked arr</th><th>Arr delay</th><th></th>
+                <th>Date</th><th>Operator</th><th>From</th><th>To</th><th>Svc from</th><th>Svc to</th><th>Dir</th><th>Reason</th><th>Detailed Reason</th><th>Booked dep</th><th>Dep delay</th><th>Dep plat</th><th>Booked arr</th><th>Arr delay</th><th>Arr plat</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -720,12 +720,12 @@ export default function Home() {
                   <td>{item.direction ?? "—"}</td>
                   <td>{item.reason ?? "—"}</td>
                   <td>{item.detailed_reason ?? "—"}</td>
-                  <td>{item.platform_departure ?? "—"}</td>
                   <td>{timeOnly(item.planned_departure)}</td>
                   <td><b className={delayClass(item.departure_lateness_minutes)}>{delayText(item.departure_lateness_minutes)}</b></td>
-                  <td>{item.platform_arrival ?? "—"}</td>
+                  <td>{item.platform_departure ?? "—"}</td>
                   <td>{timeOnly(item.planned_arrival)}</td>
                   <td><b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b></td>
+                  <td>{item.platform_arrival ?? "—"}</td>
                   <td>
                     <div className="row-actions">
                       <button type="button" className="icon-btn" title="Edit" onClick={() => { setEditingJourney(item); setEditDirection((item.direction as "Outbound" | "Inbound") ?? "Outbound"); setEditReason((item.reason as "Leisure" | "Work" | "Life" | "Love") ?? "Leisure"); setEditDetailedReason(item.detailed_reason ?? ""); }}>
