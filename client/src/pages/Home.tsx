@@ -283,6 +283,7 @@ export default function Home() {
   const [message, setMessage] = useState<string>("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [history, setHistory] = useState<StoredJourney[]>([]);
+  const [sortAsc, setSortAsc] = useState(false);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
   const [savedKeyById, setSavedKeyById] = useState<Map<number, string>>(() => new Map());
   const [pendingCandidate, setPendingCandidate] = useState<Candidate | null>(null);
@@ -369,16 +370,17 @@ export default function Home() {
   async function loadHistory() {
     try {
       const data = await apiJson<{ journeys: StoredJourney[] }>("/api/journeys?limit=800");
-      const sorted = [...data.journeys].sort((a, b) => {
-        const dateCmp = b.travel_date.localeCompare(a.travel_date);
-        if (dateCmp !== 0) return dateCmp;
-        return (b.planned_departure ?? "").localeCompare(a.planned_departure ?? "");
-      });
-      setHistory(sorted);
+      setHistory(data.journeys);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     }
   }
+
+  const sortedHistory = useMemo(() => [...history].sort((a, b) => {
+    const dateCmp = a.travel_date.localeCompare(b.travel_date);
+    const timeCmp = (a.planned_departure ?? "").localeCompare(b.planned_departure ?? "");
+    return sortAsc ? (dateCmp !== 0 ? dateCmp : timeCmp) : (dateCmp !== 0 ? -dateCmp : -timeCmp);
+  }), [history, sortAsc]);
 
   useEffect(() => {
     loadHistory();
@@ -696,7 +698,7 @@ export default function Home() {
       </section>
 
       <section className="table-section">
-        <div className="section-title"><h2>Journey History</h2><button type="button" onClick={loadHistory}>Refresh</button></div>
+        <div className="section-title"><h2>Journey History</h2><button type="button" onClick={() => setSortAsc(v => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑ Asc" : "↓ Desc"}</button><button type="button" onClick={loadHistory}>Refresh</button></div>
         <div className="plain-table history-table">
           <table>
             <thead>
@@ -705,9 +707,9 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {history.length === 0 ? (
+              {sortedHistory.length === 0 ? (
                 <tr><td colSpan={16} className="empty-row">No journeys saved.</td></tr>
-              ) : history.map((item) => (
+              ) : sortedHistory.map((item) => (
                 <tr className="data-row history-row" key={item.id}>
                   <td>{item.travel_date.replace(/-/g, "")}</td>
                   <td>{item.operator_name ? <OperatorBadge name={item.operator_name} /> : "—"}</td>
