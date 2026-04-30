@@ -554,6 +554,24 @@
   overflow-x: auto;
 }
 
+.plain-table > table {
+  border-collapse: collapse;
+  width: max-content;
+}
+
+.history-table .table-head,
+.history-table .data-row {
+  display: table-row;
+  min-width: unset;
+}
+
+.history-table th,
+.history-table td {
+  display: table-cell;
+  white-space: nowrap;
+  text-align: left;
+}
+
 .table-head,
 .data-row {
   display: grid;

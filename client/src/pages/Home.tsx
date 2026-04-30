@@ -698,38 +698,46 @@ export default function Home() {
       <section className="table-section">
         <div className="section-title"><h2>Journey History</h2><button type="button" onClick={loadHistory}>Refresh</button></div>
         <div className="plain-table history-table">
-          <div className="table-head history-row">
-            <span>Date</span><span>Operator</span><span>From</span><span>To</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Detailed Reason</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span></span>
-          </div>
-          {history.length === 0 ? (
-            <div className="empty-row">No journeys saved.</div>
-          ) : history.map((item) => (
-            <div className="data-row history-row" key={item.id}>
-              <span>{item.travel_date.replace(/-/g, "")}</span>
-              <span className="truncate">{item.operator_name ? <OperatorBadge name={item.operator_name} /> : "—"}</span>
-              <span className="truncate">{stationLabel(item.boarded_crs)}</span>
-              <span className="truncate">{stationLabel(item.alighted_crs)}</span>
-              <span className="truncate">{stationLabel(item.service_origin_crs)}</span>
-              <span className="truncate">{stationLabel(item.service_destination_crs)}</span>
-              <span>{item.direction ?? "—"}</span>
-              <span>{item.reason ?? "—"}</span>
-              <span className="truncate">{item.detailed_reason ?? "—"}</span>
-              <span>{item.platform_departure ?? "—"}</span>
-              <span>{timeOnly(item.planned_departure)}</span>
-              <b className={delayClass(item.departure_lateness_minutes)}>{delayText(item.departure_lateness_minutes)}</b>
-              <span>{item.platform_arrival ?? "—"}</span>
-              <span>{timeOnly(item.planned_arrival)}</span>
-              <b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b>
-              <span className="row-actions">
-                <button type="button" className="icon-btn" title="Edit" onClick={() => { setEditingJourney(item); setEditDirection((item.direction as "Outbound" | "Inbound") ?? "Outbound"); setEditReason((item.reason as "Leisure" | "Work" | "Life" | "Love") ?? "Leisure"); setEditDetailedReason(item.detailed_reason ?? ""); }}>
-                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2l2 2-6 6H3V8l6-6z"/></svg>
-                </button>
-                <button type="button" className="icon-btn del-btn" title="Delete" onClick={() => deleteJourney(item.id)}>
-                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 3.5h9M4.5 3.5v-1h4v1M3 3.5l.8 7h5.4l.8-7"/></svg>
-                </button>
-              </span>
-            </div>
-          ))}
+          <table>
+            <thead>
+              <tr className="table-head history-row">
+                <th>Date</th><th>Operator</th><th>From</th><th>To</th><th>Svc from</th><th>Svc to</th><th>Dir</th><th>Reason</th><th>Detailed Reason</th><th>Dep plat</th><th>Booked dep</th><th>Dep delay</th><th>Arr plat</th><th>Booked arr</th><th>Arr delay</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.length === 0 ? (
+                <tr><td colSpan={16} className="empty-row">No journeys saved.</td></tr>
+              ) : history.map((item) => (
+                <tr className="data-row history-row" key={item.id}>
+                  <td>{item.travel_date.replace(/-/g, "")}</td>
+                  <td>{item.operator_name ? <OperatorBadge name={item.operator_name} /> : "—"}</td>
+                  <td>{stationLabel(item.boarded_crs)}</td>
+                  <td>{stationLabel(item.alighted_crs)}</td>
+                  <td>{stationLabel(item.service_origin_crs)}</td>
+                  <td>{stationLabel(item.service_destination_crs)}</td>
+                  <td>{item.direction ?? "—"}</td>
+                  <td>{item.reason ?? "—"}</td>
+                  <td>{item.detailed_reason ?? "—"}</td>
+                  <td>{item.platform_departure ?? "—"}</td>
+                  <td>{timeOnly(item.planned_departure)}</td>
+                  <td><b className={delayClass(item.departure_lateness_minutes)}>{delayText(item.departure_lateness_minutes)}</b></td>
+                  <td>{item.platform_arrival ?? "—"}</td>
+                  <td>{timeOnly(item.planned_arrival)}</td>
+                  <td><b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b></td>
+                  <td>
+                    <div className="row-actions">
+                      <button type="button" className="icon-btn" title="Edit" onClick={() => { setEditingJourney(item); setEditDirection((item.direction as "Outbound" | "Inbound") ?? "Outbound"); setEditReason((item.reason as "Leisure" | "Work" | "Life" | "Love") ?? "Leisure"); setEditDetailedReason(item.detailed_reason ?? ""); }}>
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2l2 2-6 6H3V8l6-6z"/></svg>
+                      </button>
+                      <button type="button" className="icon-btn del-btn" title="Delete" onClick={() => deleteJourney(item.id)}>
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 3.5h9M4.5 3.5v-1h4v1M3 3.5l.8 7h5.4l.8-7"/></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
     </main>
