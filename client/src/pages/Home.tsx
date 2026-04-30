@@ -729,6 +729,11 @@ export default function Home() {
                       <button type="button" className="icon-btn" title="Edit" onClick={() => { setEditingJourney(item); setEditDirection((item.direction as "Outbound" | "Inbound") ?? "Outbound"); setEditReason((item.reason as "Leisure" | "Work" | "Life" | "Love") ?? "Leisure"); setEditDetailedReason(item.detailed_reason ?? ""); }}>
                         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2l2 2-6 6H3V8l6-6z"/></svg>
                       </button>
+                      {item.url && (
+                        <button type="button" className="icon-btn" title="Open link" onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")}>
+                          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5.5 2H2.5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V8"/><path d="M8 1.5h3.5V5"/><path d="M5.5 7.5L11.5 1.5"/></svg>
+                        </button>
+                      )}
                       <button type="button" className="icon-btn del-btn" title="Delete" onClick={() => deleteJourney(item.id)}>
                         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 3.5h9M4.5 3.5v-1h4v1M3 3.5l.8 7h5.4l.8-7"/></svg>
                       </button>
