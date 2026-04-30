@@ -23,7 +23,6 @@ type Candidate = {
   uniqueIdentity?: string;
   departureDate: string;
   trainReportingIdentity?: string;
-  operatorCode?: string;
   operatorName?: string;
   serviceOriginCrs?: string;
   serviceDestinationCrs?: string;
@@ -64,9 +63,8 @@ type StoredJourney = {
   travel_date: string;
   boarded_crs: string;
   alighted_crs: string;
-  service_identity: string;
+  url?: string;
   operator_name?: string;
-  train_reporting_identity?: string;
   service_origin_crs?: string;
   service_destination_crs?: string;
   planned_departure?: string;
@@ -96,7 +94,10 @@ const OPERATOR_COLORS: Record<string, string> = {
   "Heathrow Express": "532e63",
   "Hull Trains": "de005c",
   "LNER": "ce0e2d",
+  "London Northwestern Railway": "00bf6f",
+  "London Overground": "e87722",
   "Lumo": "2b6ef5",
+  "Merseyrail": "fff200",
   "Northern": "0f0d78",
   "ScotRail": "1e467d",
   "South Western Railway": "24398c",
@@ -145,12 +146,21 @@ function operatorFg(hex: string): string {
   return L > 0.179 ? "#000000" : "#ffffff";
 }
 
+const OPERATOR_ALIASES: Record<string, string> = {
+  "Transpennine Express": "TransPennine Express",
+};
+
+function normaliseOperator(name: string): string {
+  return OPERATOR_ALIASES[name] ?? name;
+}
+
 function OperatorBadge({ name }: { name: string }) {
-  const hex = OPERATOR_COLORS[name];
-  if (!hex) return <>{name}</>;
+  const canonical = normaliseOperator(name);
+  const hex = OPERATOR_COLORS[canonical];
+  if (!hex) return <>{canonical}</>;
   return (
     <span className="operator-badge" style={{ backgroundColor: `#${hex}`, color: operatorFg(hex) }}>
-      {name}
+      {canonical}
     </span>
   );
 }
@@ -181,6 +191,7 @@ function StationInput({
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const matched = useMemo(() => stations.find((s) => s.crs === value), [stations, value]);
   const displayLabel = matched ? `${matched.name} (${matched.crs})` : value;
@@ -189,10 +200,18 @@ function StationInput({
     if (!editing) return [];
     const q = query.toLowerCase().trim();
     if (!q) return [];
-    return stations
-      .filter((s) => s.name.toLowerCase().includes(q) || s.crs.toLowerCase().startsWith(q))
-      .slice(0, 15);
+    const results = stations.filter((s) => s.name.toLowerCase().includes(q) || s.crs.toLowerCase().startsWith(q));
+    results.sort((a, b) => {
+      const aExact = a.crs.toLowerCase() === q ? 0 : 1;
+      const bExact = b.crs.toLowerCase() === q ? 0 : 1;
+      return aExact - bExact;
+    });
+    return results.slice(0, 15);
   }, [stations, query, editing]);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -205,14 +224,27 @@ function StationInput({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  function commit(crs: string) {
+    onChange(crs);
+    setEditing(false);
+    setQuery("");
+  }
+
   return (
     <div className="station-input" ref={ref}>
       <input
+        ref={inputRef}
         value={editing ? query : displayLabel}
         readOnly={!editing}
-        onFocus={() => { setEditing(true); setQuery(""); }}
+        onFocus={() => { setEditing(true); setQuery(value); }}
         onChange={(e) => setQuery(e.target.value)}
         onBlur={() => setTimeout(() => { setEditing(false); setQuery(""); }, 150)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && filtered.length > 0) {
+            e.preventDefault();
+            commit(filtered[0].crs);
+          }
+        }}
         placeholder={editing ? "Type station name or CRS…" : undefined}
       />
       {editing && filtered.length > 0 && (
@@ -221,7 +253,7 @@ function StationInput({
             <div
               key={s.crs}
               className="station-option"
-              onMouseDown={() => { onChange(s.crs); setEditing(false); setQuery(""); }}
+              onMouseDown={() => commit(s.crs)}
             >
               <span>{s.name}</span><span className="station-crs">{s.crs}</span>
             </div>
@@ -233,64 +265,16 @@ function StationInput({
 }
 
 export default function Home() {
-  const [apiToken, setApiToken] = useState<string>(() => localStorage.getItem("rtt_api_token") ?? "");
-  const [showTokenDialog, setShowTokenDialog] = useState(() => !localStorage.getItem("rtt_api_token"));
-  const [draftToken, setDraftToken] = useState<string>(() => localStorage.getItem("rtt_api_token") ?? "");
-  const [dialogStatus, setDialogStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
-  const [dialogError, setDialogError] = useState("");
-  const [tokenValidUntil, setTokenValidUntil] = useState("");
-  const [rttCredentials, setRttCredentials] = useState<{
-    historyRestriction?: boolean;
-    historyRestrictToDays?: number | null;
-    entitlements?: string[];
-  } | null>(null);
-  const accessTokenCache = useRef<{ token: string; expiresAt: number } | null>(null);
+  const [rttCookie, setRttCookie] = useState<string>(() => localStorage.getItem("rtt_cookie") ?? "");
+  const [showTokenDialog, setShowTokenDialog] = useState(() => !localStorage.getItem("rtt_cookie"));
+  const [draftCookie, setDraftCookie] = useState<string>(() => localStorage.getItem("rtt_cookie") ?? "");
 
-  useEffect(() => { accessTokenCache.current = null; }, [apiToken]);
-
-  async function handleExchange() {
-    const t = draftToken.trim();
-    if (!t) return;
-    setDialogStatus("loading");
-    setDialogError("");
-    try {
-      const data = await apiJson<{ accessToken: string; validUntil: string; entitlements?: unknown }>(
-        "/api/exchange-token",
-        { headers: { "X-RTT-Token": t } },
-      );
-      accessTokenCache.current = { token: data.accessToken, expiresAt: new Date(data.validUntil).getTime() };
-      setApiToken(t);
-      localStorage.setItem("rtt_api_token", t);
-      setTokenValidUntil(data.validUntil);
-      setDialogStatus("ok");
-      try {
-        const info = await apiJson<{ credentials?: { historyRestriction?: boolean; historyRestrictToDays?: number | null; entitlements?: string[] } }>(
-          "/api/rtt-info",
-          { headers: { "X-RTT-Token": data.accessToken } },
-        );
-        setRttCredentials(info.credentials ?? null);
-      } catch {
-        setRttCredentials(null);
-      }
-    } catch (err) {
-      setDialogStatus("error");
-      setDialogError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function getEffectiveToken(): Promise<string> {
-    const cache = accessTokenCache.current;
-    if (cache && cache.expiresAt - Date.now() > 60_000) return cache.token;
-    try {
-      const data = await apiJson<{ accessToken: string; validUntil: string }>(
-        "/api/exchange-token",
-        { headers: { "X-RTT-Token": apiToken } },
-      );
-      accessTokenCache.current = { token: data.accessToken, expiresAt: new Date(data.validUntil).getTime() };
-      return data.accessToken;
-    } catch {
-      return apiToken;
-    }
+  function saveCookie() {
+    const c = draftCookie.trim();
+    if (!c) return;
+    setRttCookie(c);
+    localStorage.setItem("rtt_cookie", c);
+    setShowTokenDialog(false);
   }
 
   const [form, setForm] = useState<SearchForm>(DEFAULT_FORM);
@@ -301,13 +285,17 @@ export default function Home() {
   const [history, setHistory] = useState<StoredJourney[]>([]);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
   const [pendingCandidate, setPendingCandidate] = useState<Candidate | null>(null);
-  const [viewingDetail, setViewingDetail] = useState<StoredJourney | null>(null);
+
   const [showStats, setShowStats] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [addReason, setAddReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
   const [addDetailedReason, setAddDetailedReason] = useState<string>("");
+  const [editingJourney, setEditingJourney] = useState<StoredJourney | null>(null);
+  const [editDirection, setEditDirection] = useState<"Outbound" | "Inbound">("Outbound");
+  const [editReason, setEditReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
+  const [editDetailedReason, setEditDetailedReason] = useState<string>("");
   const [stations, setStations] = useState<Station[]>([]);
 
   const stationMap = useMemo(() => new Map(stations.map((s) => [s.crs, s.name])), [stations]);
@@ -347,6 +335,19 @@ export default function Home() {
     }
   }
 
+  async function updateJourney(id: number, direction: string, reason: string, detailedReason: string) {
+    try {
+      await apiJson(`/api/journeys/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ direction, reason, detailed_reason: detailedReason }),
+      });
+      setHistory((prev) => prev.map((j) => j.id === id ? { ...j, direction, reason, detailed_reason: detailedReason } : j));
+      setEditingJourney(null);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function deleteJourney(id: number) {
     try {
       await apiJson(`/api/journeys/${id}`, { method: "DELETE" });
@@ -358,7 +359,7 @@ export default function Home() {
 
   async function loadHistory() {
     try {
-      const data = await apiJson<{ journeys: StoredJourney[] }>("/api/journeys?limit=80");
+      const data = await apiJson<{ journeys: StoredJourney[] }>("/api/journeys?limit=800");
       const sorted = [...data.journeys].sort((a, b) => {
         const dateCmp = b.travel_date.localeCompare(a.travel_date);
         if (dateCmp !== 0) return dateCmp;
@@ -424,10 +425,9 @@ export default function Home() {
     setMessage("");
     setCandidates([]);
     try {
-      const token = await getEffectiveToken();
       const data = await apiJson<{ candidates: Candidate[] }>("/api/search-services", {
         method: "POST",
-        headers: { "X-RTT-Token": token },
+        headers: { "X-RTT-Cookie": rttCookie },
         body: JSON.stringify({
           ...form,
           originCrs: form.originCrs.toUpperCase(),
@@ -448,10 +448,9 @@ export default function Home() {
     setPendingCandidate(null);
     setMessage("");
     try {
-      const token = await getEffectiveToken();
       const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
         method: "POST",
-        headers: { "X-RTT-Token": token },
+        headers: { "X-RTT-Cookie": rttCookie },
         body: JSON.stringify({
           travelDate: form.travelDate,
           originCrs: form.originCrs.toUpperCase(),
@@ -465,7 +464,7 @@ export default function Home() {
         }),
       });
       setSavedKeys((previous) => new Set(previous).add(`${candidate.identity}-${candidate.departureDate}`));
-      setMessage(`Added ${data.detail.trainReportingIdentity || data.detail.identity || candidate.identity} to journey history.`);
+      setMessage(`Added ${data.detail.identity || candidate.identity} to journey history.`);
       await loadHistory();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
@@ -482,8 +481,8 @@ export default function Home() {
           <button type="button" className="stats-header-btn" onClick={() => setShowStats(true)}>Stats</button>
           <button type="button" className="stats-header-btn" onClick={() => setShowMap(true)}>Map</button>
         </div>
-        <button type="button" className="token-header-btn" onClick={() => { setDraftToken(apiToken); setDialogStatus("idle"); setShowTokenDialog(true); }}>
-          {apiToken ? "Token ✓" : "Set token"}
+        <button type="button" className="token-header-btn" onClick={() => { setDraftCookie(rttCookie); setShowTokenDialog(true); }}>
+          {rttCookie ? "Cookie ✓" : "Set cookie"}
         </button>
       </header>
 
@@ -491,39 +490,22 @@ export default function Home() {
         <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTokenDialog(false); }}>
           <div className="token-dialog">
             <div className="token-dialog-header">
-              <span>RTT API Token</span>
+              <span>RTT Cookie</span>
               <button type="button" className="token-dialog-close" onClick={() => setShowTokenDialog(false)}>×</button>
             </div>
-            <p className="token-dialog-desc">Enter your refresh token from <a href="https://api-portal.rtt.io" target="_blank" rel="noopener noreferrer">api-portal.rtt.io</a>.</p>
+            <p className="token-dialog-desc">Paste your browser cookie from <a href="https://www.realtimetrains.co.uk" target="_blank" rel="noopener noreferrer">realtimetrains.co.uk</a> (requires RTT+ subscription).</p>
             <input
               type="text"
               className="token-dialog-input"
-              value={draftToken}
-              onChange={(e) => { setDraftToken(e.target.value); setDialogStatus("idle"); }}
-              placeholder="eyJ…"
+              value={draftCookie}
+              onChange={(e) => setDraftCookie(e.target.value)}
+              placeholder="Rtt_AuthIndicator=true; _oauth2_proxy=…"
               autoFocus
-              onKeyDown={(e) => { if (e.key === "Enter") handleExchange(); }}
+              onKeyDown={(e) => { if (e.key === "Enter") saveCookie(); }}
             />
             <div className="token-dialog-actions">
-              <button type="button" onClick={handleExchange} disabled={dialogStatus === "loading" || !draftToken.trim()}>
-                {dialogStatus === "loading" ? "Exchanging…" : "Exchange token"}
-              </button>
-              {dialogStatus === "ok" && <button type="button" onClick={() => setShowTokenDialog(false)}>Done</button>}
+              <button type="button" onClick={saveCookie} disabled={!draftCookie.trim()}>Save</button>
             </div>
-            {dialogStatus === "ok" && (
-              <div className="token-status-ok">Token valid until {new Date(tokenValidUntil).toLocaleTimeString()}</div>
-            )}
-            {dialogStatus === "ok" && rttCredentials && (
-              <div className="token-status-ok">
-                History: {rttCredentials.historyRestriction
-                  ? `${rttCredentials.historyRestrictToDays ?? 14} days`
-                  : "unrestricted"}
-                {rttCredentials.entitlements?.length ? ` · ${rttCredentials.entitlements.join(", ")}` : ""}
-              </div>
-            )}
-            {dialogStatus === "error" && (
-              <div className="token-status-error">{dialogError}</div>
-            )}
           </div>
         </div>
       )}
@@ -567,22 +549,38 @@ export default function Home() {
         </div>
       )}
 
-      {viewingDetail && (
-        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setViewingDetail(null); }}>
+      {editingJourney && (
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setEditingJourney(null); }}>
           <div className="token-dialog">
             <div className="token-dialog-header">
-              <span>{viewingDetail.train_reporting_identity || viewingDetail.service_identity} — {viewingDetail.travel_date}</span>
-              <button type="button" className="token-dialog-close" onClick={() => setViewingDetail(null)}>×</button>
+              <span>Edit Journey — {editingJourney.travel_date}</span>
+              <button type="button" className="token-dialog-close" onClick={() => setEditingJourney(null)}>×</button>
             </div>
             <div className="add-dialog-body">
-              <div className="add-dialog-field"><span>From</span><span>{stationLabel(viewingDetail.boarded_crs)}</span></div>
-              <div className="add-dialog-field"><span>To</span><span>{stationLabel(viewingDetail.alighted_crs)}</span></div>
-              <div className="add-dialog-field"><span>Direction</span><span>{viewingDetail.direction ?? "—"}</span></div>
-              <div className="add-dialog-field"><span>Reason</span><span>{viewingDetail.reason ?? "—"}</span></div>
-              <div className="add-dialog-field"><span>Detail</span><span>{viewingDetail.detailed_reason || "—"}</span></div>
+              <div className="add-dialog-field">
+                <span>Direction</span>
+                <div className="add-dialog-options">
+                  {(["Outbound", "Inbound"] as const).map((d) => (
+                    <button type="button" key={d} className={`add-dialog-option${editDirection === d ? " selected" : ""}`} onClick={() => setEditDirection(d)}>{d}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="add-dialog-field">
+                <span>Reason</span>
+                <div className="add-dialog-options">
+                  {(["Leisure", "Work", "Life", "Love"] as const).map((r) => (
+                    <button type="button" key={r} className={`add-dialog-option${editReason === r ? " selected" : ""}`} onClick={() => setEditReason(r)}>{r}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="add-dialog-field">
+                <span>Detail</span>
+                <input type="text" className="add-dialog-input" value={editDetailedReason} onChange={(e) => setEditDetailedReason(e.target.value)} placeholder="Optional note" />
+              </div>
             </div>
             <div className="token-dialog-actions">
-              <button type="button" onClick={() => setViewingDetail(null)}>Close</button>
+              <button type="button" onClick={() => updateJourney(editingJourney.id, editDirection, editReason, editDetailedReason)}>Save</button>
+              <button type="button" onClick={() => setEditingJourney(null)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -598,22 +596,22 @@ export default function Home() {
             <div className="stats-charts">
               <div className="stats-chart">
                 <div className="stats-chart-title">By Operator</div>
-                <PieChart width={260} height={240}>
-                  <Pie data={operatorData} cx={130} cy={115} outerRadius={85} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
+                <PieChart width={520} height={300}>
+                  <Pie data={operatorData} cx={150} cy={150} outerRadius={120} dataKey="value" isAnimationActive={false}>
                     {operatorData.map((entry, i) => <Cell key={i} fill={OPERATOR_COLORS[entry.name] ? `#${OPERATOR_COLORS[entry.name]}` : CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v, n) => [v, n]} />
-                  <Legend />
+                  <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 11, maxHeight: 280, overflowY: "auto", paddingLeft: 8 }} />
                 </PieChart>
               </div>
               <div className="stats-chart">
                 <div className="stats-chart-title">By Reason</div>
-                <PieChart width={260} height={240}>
-                  <Pie data={reasonData} cx={130} cy={115} outerRadius={85} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
+                <PieChart width={340} height={240}>
+                  <Pie data={reasonData} cx={130} cy={110} outerRadius={90} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
                     {reasonData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v, n) => [v, n]} />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
                 </PieChart>
               </div>
             </div>
@@ -670,7 +668,7 @@ export default function Home() {
                 <span>{candidate.trainReportingIdentity || candidate.identity}</span>
                 <span className="truncate">{stationLabel(candidate.serviceOriginCrs)}</span>
                 <span className="truncate">{stationLabel(candidate.serviceDestinationCrs)}</span>
-                <span className="truncate">{candidate.operatorName ? <OperatorBadge name={candidate.operatorName} /> : candidate.operatorCode || "—"}</span>
+                <span className="truncate">{candidate.operatorName ? <OperatorBadge name={candidate.operatorName} /> : "—"}</span>
                 <span>{candidate.platformDeparture ?? "—"}</span>
                 <span>{timeOnly(candidate.plannedDeparture)}</span>
                 <b className={delayClass(candidate.departureLatenessMinutes)}>{delayText(candidate.departureLatenessMinutes)}</b>
@@ -688,14 +686,13 @@ export default function Home() {
         <div className="section-title"><h2>Journey History</h2><button type="button" onClick={loadHistory}>Refresh</button></div>
         <div className="plain-table history-table">
           <div className="table-head history-row">
-            <span>Date</span><span>Service</span><span>Operator</span><span>From</span><span>To</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span></span>
+            <span>Date</span><span>Operator</span><span>From</span><span>To</span><span>Svc from</span><span>Svc to</span><span>Dir</span><span>Reason</span><span>Detailed Reason</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span></span>
           </div>
           {history.length === 0 ? (
             <div className="empty-row">No journeys saved.</div>
           ) : history.map((item) => (
             <div className="data-row history-row" key={item.id}>
               <span>{item.travel_date.replace(/-/g, "")}</span>
-              <span>{item.train_reporting_identity || item.service_identity}</span>
               <span className="truncate">{item.operator_name ? <OperatorBadge name={item.operator_name} /> : "—"}</span>
               <span className="truncate">{stationLabel(item.boarded_crs)}</span>
               <span className="truncate">{stationLabel(item.alighted_crs)}</span>
@@ -703,6 +700,7 @@ export default function Home() {
               <span className="truncate">{stationLabel(item.service_destination_crs)}</span>
               <span>{item.direction ?? "—"}</span>
               <span>{item.reason ?? "—"}</span>
+              <span className="truncate">{item.detailed_reason ?? "—"}</span>
               <span>{item.platform_departure ?? "—"}</span>
               <span>{timeOnly(item.planned_departure)}</span>
               <b className={delayClass(item.departure_lateness_minutes)}>{delayText(item.departure_lateness_minutes)}</b>
@@ -710,8 +708,8 @@ export default function Home() {
               <span>{timeOnly(item.planned_arrival)}</span>
               <b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b>
               <span className="row-actions">
-                <button type="button" className="icon-btn" title="View detail" onClick={() => setViewingDetail(item)}>
-                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><ellipse cx="6.5" cy="6.5" rx="5.5" ry="3.5"/><circle cx="6.5" cy="6.5" r="1.5"/></svg>
+                <button type="button" className="icon-btn" title="Edit" onClick={() => { setEditingJourney(item); setEditDirection((item.direction as "Outbound" | "Inbound") ?? "Outbound"); setEditReason((item.reason as "Leisure" | "Work" | "Life" | "Love") ?? "Leisure"); setEditDetailedReason(item.detailed_reason ?? ""); }}>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2l2 2-6 6H3V8l6-6z"/></svg>
                 </button>
                 <button type="button" className="icon-btn del-btn" title="Delete" onClick={() => deleteJourney(item.id)}>
                   <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 3.5h9M4.5 3.5v-1h4v1M3 3.5l.8 7h5.4l.8-7"/></svg>

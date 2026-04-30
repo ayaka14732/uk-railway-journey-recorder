@@ -220,7 +220,7 @@
 }
 
 .stats-dialog {
-  width: min(580px, 96vw);
+  width: min(600px, 96vw);
 }
 
 .token-dialog.map-dialog {
@@ -238,10 +238,10 @@
 
 .stats-charts {
   display: flex;
-  justify-content: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   padding: 16px 12px 4px;
-  flex-wrap: wrap;
 }
 
 .stats-chart {
@@ -592,7 +592,7 @@
 
 .history-row {
   min-width: 1440px;
-  grid-template-columns: 70px 60px minmax(130px, 1fr) 190px 190px 190px 190px 80px 68px 70px 90px 78px 70px 90px 78px 52px;
+  grid-template-columns: 70px minmax(202px, 1fr) 220px 220px 220px 220px 80px 68px minmax(260px, 1fr) 70px 90px 78px 70px 90px 78px 52px;
 }
 
 .truncate {

@@ -1,32 +1,32 @@
 """FastAPI backend for UK Rail History.
 
-This service keeps the Realtime Trains token server-side, queries the RTT API through a
-controlled proxy, normalises train timing data for the frontend, and stores confirmed
-journey records in SQLite. It intentionally avoids exposing the bearer token to React.
+Scrapes realtimetrains.co.uk using the user's browser cookie (RTT+ subscription)
+and stores confirmed journey records in SQLite.
 """
 
 from __future__ import annotations
 
 import csv
-import json
 import os
+import re
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Optional  # noqa: F401 (Optional kept for return types)
+from typing import Any, Optional
 
 import requests
+from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+RTT_WEB = "https://www.realtimetrains.co.uk"
 
 
 def load_local_env() -> None:
-    """Small .env loader so local development does not require extra dependencies."""
     env_file = ROOT_DIR / "backend" / ".env"
     if not env_file.exists():
         return
@@ -40,6 +40,7 @@ def load_local_env() -> None:
 
 load_local_env()
 
+
 def sqlite_path_from_env() -> Path:
     configured = os.getenv("RAIL_HISTORY_SQLITE_PATH") or os.getenv("DATABASE_URL")
     if configured and not configured.startswith(("mysql:", "postgres:", "postgresql:")):
@@ -50,8 +51,6 @@ def sqlite_path_from_env() -> Path:
 
 
 DB_PATH = sqlite_path_from_env()
-RTT_BASE_URL = os.getenv("RTT_BASE_URL", "https://data.rtt.io").rstrip("/")
-RTT_API_VERSION = os.getenv("RTT_API_VERSION", "2026-04-09")
 
 
 class SearchRequest(BaseModel):
@@ -74,7 +73,7 @@ class ResolveRequest(BaseModel):
     detailedReason: Optional[str] = None
 
 
-app = FastAPI(title="UK Rail History API", version="0.1.0")
+app = FastAPI(title="UK Rail History API", version="0.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -119,11 +118,8 @@ def init_db() -> None:
                 travel_date TEXT NOT NULL,
                 boarded_crs TEXT NOT NULL,
                 alighted_crs TEXT NOT NULL,
-                service_identity TEXT NOT NULL,
                 departure_date TEXT NOT NULL,
-                operator_code TEXT,
                 operator_name TEXT,
-                train_reporting_identity TEXT,
                 service_origin_crs TEXT,
                 service_destination_crs TEXT,
                 planned_departure TEXT,
@@ -135,7 +131,7 @@ def init_db() -> None:
                 direction TEXT,
                 reason TEXT,
                 detailed_reason TEXT,
-                raw_json TEXT NOT NULL,
+                url TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """
@@ -148,286 +144,197 @@ def startup() -> None:
     init_db()
 
 
-def rtt_headers(token: str) -> dict[str, str]:
-    return {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
-        "Version": RTT_API_VERSION,
-    }
+# ── RTT website scraping ──────────────────────────────────────────────────────
+
+def get_rtt_cookie(x_rtt_cookie: Annotated[Optional[str], Header()] = None) -> str:
+    cookie = (x_rtt_cookie or "").strip()
+    if not cookie:
+        raise HTTPException(status_code=401, detail="No RTT cookie provided. Enter your RTT website cookie in the app.")
+    return cookie
 
 
-def get_rtt_token(x_rtt_token: Annotated[Optional[str], Header()] = None) -> str:
-    token = (x_rtt_token or "").strip()
-    if not token:
-        raise HTTPException(
-            status_code=401,
-            detail="No RTT API token provided. Enter your Realtime Trains bearer token in the app.",
-        )
-    return token
-
-
-def rtt_get(path: str, token: str, params: dict[str, Any] | None = None) -> Any:
-    params = params or {}
-    params.setdefault("version", RTT_API_VERSION)
-    url = f"{RTT_BASE_URL}{path}"
+def web_get(url: str, cookie: str) -> BeautifulSoup:
     try:
-        response = requests.get(url, headers=rtt_headers(token), params=params, timeout=18)
+        r = requests.get(url, headers={"Cookie": cookie, "User-Agent": "Mozilla/5.0"}, timeout=15)
     except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"Realtime Trains request failed: {exc}") from exc
-
-    if response.status_code == 204:
-        return {"services": []}
-    if response.status_code in {401, 403}:
-        raise HTTPException(status_code=401, detail="RTT token is invalid or lacks the required access. Check your API key.")
-    if response.status_code == 404:
-        raise HTTPException(status_code=404, detail="The requested train service was not found in Realtime Trains.")
-    if not response.ok:
-        raise HTTPException(status_code=502, detail=f"Realtime Trains returned HTTP {response.status_code}: {response.text[:300]}")
-    return response.json()
+        raise HTTPException(status_code=502, detail=f"RTT request failed: {exc}") from exc
+    if not r.ok:
+        raise HTTPException(status_code=502, detail=f"RTT returned HTTP {r.status_code}")
+    return BeautifulSoup(r.text, "html.parser")
 
 
-def parse_dt(value: Optional[str]) -> Optional[datetime]:
-    if not value:
+def parse_t4(raw: str | None) -> str | None:
+    """'HH:MM' or 'HHMM' → 'HHMM'; strips +1 suffix; None if unparseable."""
+    if not raw:
+        return None
+    s = raw.strip()
+    if s.endswith("+1"):
+        s = s[:-2].strip()
+    s = s.replace(":", "")
+    return s if len(s) == 4 and s.isdigit() else None
+
+
+def t4_mins(t4: str | None) -> int | None:
+    if t4 and len(t4) == 4 and t4.isdigit():
+        return int(t4[:2]) * 60 + int(t4[2:])
+    return None
+
+
+def t4_to_iso(date_str: str, t4: str | None, next_day: bool = False) -> str | None:
+    if not t4:
+        return None
+    d = date.fromisoformat(date_str)
+    if next_day:
+        d += timedelta(days=1)
+    return f"{d}T{t4[:2]}:{t4[2:]}:00"
+
+
+def parse_delay(el: Any) -> int | None:
+    """Parse div.realtime.delay: '+1'→1, '-2'→-2, ''→None."""
+    if not el:
+        return None
+    txt = el.get_text(strip=True)
+    if not txt:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return int(txt)
     except ValueError:
         return None
 
 
-def display_time(value: Optional[str]) -> Optional[str]:
-    parsed = parse_dt(value)
-    if parsed:
-        return parsed.strftime("%H:%M")
-    return value
+def diff_mins(rt: str | None, plan: str | None) -> int | None:
+    r, p = t4_mins(rt), t4_mins(plan)
+    if r is None or p is None:
+        return None
+    d = r - p
+    if d > 720:
+        d -= 1440
+    if d < -720:
+        d += 1440
+    return d
 
 
-def code_set(location: dict[str, Any]) -> set[str]:
-    codes: set[str] = set()
-    for key in ("shortCode", "longCode"):
-        value = location.get(key)
-        if isinstance(value, str):
-            codes.add(value.upper())
-    for key in ("shortCodes", "longCodes"):
-        for value in location.get(key) or []:
-            if isinstance(value, str):
-                codes.add(value.upper())
-    unique = location.get("uniqueIdentity")
-    if isinstance(unique, str):
-        codes.add(unique.rsplit(":", 1)[-1].upper())
-    return codes
+def scrape_service_page(
+    uid: str, dep_date: str, origin_crs: str, dest_crs: str, cookie: str
+) -> dict[str, Any]:
+    svc_url = f"{RTT_WEB}/service/gb-nr:{uid}/{dep_date}"
+    soup = web_get(svc_url, cookie)
 
+    if soup.select_one('form[action*="login"]'):
+        raise HTTPException(status_code=401, detail="RTT cookie expired or invalid.")
 
-def location_name(location: dict[str, Any] | None) -> str:
-    if not location:
-        return "Unknown"
-    return str(location.get("description") or location.get("name") or next(iter(code_set(location)), "Unknown"))
+    # Operator
+    operator = ""
+    toc_el = soup.select_one("div.toc")
+    if toc_el:
+        first_div = toc_el.select_one("div")
+        if first_div:
+            operator = first_div.get_text(strip=True)
 
+    # Stops
+    stops = []
+    for div in soup.select("div.location.call.public"):
+        crs_el   = div.select_one("span.crs")
+        plat_el  = div.select_one("div.platform")
+        garr_el  = div.select_one("div.gbtt.arr")
+        gdep_el  = div.select_one("div.gbtt.dep")
+        rarr_el  = div.select_one("div.realtime.arr")
+        rdep_el  = div.select_one("div.realtime.dep")
+        delay_el = div.select_one("div.realtime.delay")
 
-def temporal_for_public_stop(stop: dict[str, Any]) -> dict[str, Any]:
-    temporal = stop.get("temporalData") or {}
-    return temporal.get("departure") or temporal.get("arrival") or temporal.get("pass") or {}
+        crs = crs_el.get_text(strip=True) if crs_el else None
+        rt_arr_txt = (rarr_el.get_text(strip=True) if rarr_el else "") or ""
+        rt_dep_txt = (rdep_el.get_text(strip=True) if rdep_el else "") or ""
+        stops.append({
+            "crs":         crs,
+            "platform":    plat_el.get_text(strip=True) if plat_el else None,
+            "planned_arr": parse_t4(garr_el.get_text(strip=True) if garr_el else None),
+            "planned_dep": parse_t4(gdep_el.get_text(strip=True) if gdep_el else None),
+            "rt_arr":      rt_arr_txt if (len(rt_arr_txt) == 4 and rt_arr_txt.isdigit()) else None,
+            "rt_dep":      rt_dep_txt if (len(rt_dep_txt) == 4 and rt_dep_txt.isdigit()) else None,
+            "delay":       parse_delay(delay_el),
+        })
 
+    if not stops:
+        raise HTTPException(status_code=422, detail="No stops found on service page.")
 
-def planned_time(temporal: dict[str, Any]) -> Optional[str]:
-    return temporal.get("scheduleAdvertised") or temporal.get("scheduleInternal")
+    origin_up = origin_crs.upper()
+    dest_up   = dest_crs.upper()
 
+    boarding_idx = next((i for i, s in enumerate(stops) if s["crs"] == origin_up), None)
+    if boarding_idx is None:
+        available = [s["crs"] for s in stops if s["crs"]]
+        raise HTTPException(status_code=422, detail={"message": "Service does not call at origin.", "availableStops": available})
 
-def actual_time(temporal: dict[str, Any]) -> Optional[str]:
-    return temporal.get("realtimeActual") or temporal.get("realtimeForecast") or temporal.get("realtimeEstimate")
-
-
-def lateness(temporal: dict[str, Any]) -> Optional[int]:
-    value = temporal.get("realtimeAdvertisedLateness")
-    if value is None:
-        value = temporal.get("realtimeInternalLateness")
-    return value
-
-
-def pair_name(pairs: list[dict[str, Any]] | None) -> str:
-    if not pairs:
-        return "Unknown"
-    return " / ".join(location_name(pair.get("location") or {}) for pair in pairs)
-
-
-def pair_crs(pairs: list[dict[str, Any]] | None) -> str:
-    if not pairs:
-        return ""
-    crses = []
-    for pair in pairs:
-        loc = pair.get("location") or pair  # handle both {location:{}} and direct location
-        code = str(loc.get("shortCode") or "").strip().upper()
-        if not code:
-            short_codes = loc.get("shortCodes") or []
-            code = str(short_codes[0]).strip().upper() if short_codes else ""
-        if not code:
-            all_codes = code_set(loc)
-            crs_like = sorted([c for c in all_codes if len(c) == 3 and c.isalpha()])
-            code = crs_like[0] if crs_like else ""
-        crses.append(code)
-    return " / ".join(c for c in crses if c)
-
-
-def normalise_candidate(item: dict[str, Any], requested_origin: str, requested_destination: str) -> dict[str, Any]:
-    metadata = item.get("scheduleMetadata") or {}
-    operator = metadata.get("operator") or {}
-    dep = (item.get("temporalData") or {}).get("departure") or temporal_for_public_stop(item)
-    dep_platform = ((item.get("locationMetadata") or {}).get("platform") or {}).get("actual") or ((item.get("locationMetadata") or {}).get("platform") or {}).get("planned")
-    destinations = item.get("destination") or []
-    destination_stop = destinations[0] if destinations else {}
-    arr = ((destination_stop.get("temporalData") or {}).get("arrival") or temporal_for_public_stop(destination_stop)) if destination_stop else {}
-    return {
-        "identity": metadata.get("identity"),
-        "uniqueIdentity": metadata.get("uniqueIdentity"),
-        "departureDate": metadata.get("departureDate"),
-        "trainReportingIdentity": metadata.get("trainReportingIdentity"),
-        "operatorCode": operator.get("code"),
-        "operatorName": operator.get("name"),
-        "serviceOriginCrs": pair_crs(item.get("origin")),
-        "serviceDestinationCrs": pair_crs(item.get("destination")),
-        "requestedOriginCrs": requested_origin.upper(),
-        "requestedDestinationCrs": requested_destination.upper(),
-        "plannedDeparture": planned_time(dep),
-        "actualDeparture": actual_time(dep),
-        "departureDisplay": display_time(actual_time(dep) or planned_time(dep)),
-        "departureLatenessMinutes": lateness(dep),
-        "platformDeparture": dep_platform,
-        "plannedArrival": planned_time(arr),
-        "actualArrival": actual_time(arr),
-        "arrivalDisplay": display_time(actual_time(arr) or planned_time(arr)),
-        "arrivalLatenessMinutes": lateness(arr),
-        "isCancelled": bool(dep.get("isCancelled") or arr.get("isCancelled")),
-        "raw": item,
-    }
-
-
-def find_stop(locations: list[dict[str, Any]], requested_code: str) -> Optional[dict[str, Any]]:
-    wanted = requested_code.upper()
-    for stop in locations:
-        location = stop.get("location") or {}
-        if wanted in code_set(location):
-            return stop
-    return None
-
-
-def enrich_candidate_with_detail(candidate: dict[str, Any], boarded: str, alighted: str, token: str) -> dict[str, Any]:
-    identity = candidate.get("identity")
-    departure_date = candidate.get("departureDate")
-    if not identity or not departure_date:
-        return candidate
-    try:
-        payload = rtt_get("/gb-nr/service", token, {"identity": identity, "departureDate": departure_date})
-        detail = normalise_detail(payload, boarded, alighted)
-    except HTTPException:
-        return candidate
-    candidate.update(
-        {
-            "serviceOriginCrs": detail.get("serviceOriginCrs") or candidate.get("serviceOriginCrs"),
-            "serviceDestinationCrs": detail.get("serviceDestinationCrs") or candidate.get("serviceDestinationCrs"),
-            "plannedArrival": detail.get("plannedArrival") or candidate.get("plannedArrival"),
-            "actualArrival": detail.get("actualArrival") or candidate.get("actualArrival"),
-            "arrivalDisplay": detail.get("arrivalDisplay") or candidate.get("arrivalDisplay"),
-            "arrivalLatenessMinutes": detail.get("arrivalLatenessMinutes") if detail.get("arrivalLatenessMinutes") is not None else candidate.get("arrivalLatenessMinutes"),
-            "platformDeparture": detail.get("platformDeparture") or candidate.get("platformDeparture"),
-            "platformArrival": detail.get("platformArrival"),
-        }
+    # On loop/circular routes the destination may appear both before and after the boarding
+    # stop. Prefer the occurrence AFTER boarding; fall back to any occurrence.
+    alighting_idx = next(
+        (i for i, s in enumerate(stops) if s["crs"] == dest_up and i > boarding_idx),
+        next((i for i, s in enumerate(stops) if s["crs"] == dest_up), None),
     )
-    return candidate
+    if alighting_idx is None:
+        available = [s["crs"] for s in stops if s["crs"]]
+        raise HTTPException(status_code=422, detail={"message": "Service does not call at destination.", "availableStops": available})
 
+    boarding  = stops[boarding_idx]
+    alighting = stops[alighting_idx]
 
-def normalise_detail(payload: dict[str, Any], boarded: str, alighted: str) -> dict[str, Any]:
-    service = payload.get("service") or {}
-    metadata = service.get("scheduleMetadata") or {}
-    operator = metadata.get("operator") or {}
-    locations = service.get("locations") or []
-    boarding_stop = find_stop(locations, boarded)
-    alighting_stop = find_stop(locations, alighted)
-    if not boarding_stop or not alighting_stop:
-        available = [location_name((stop.get("location") or {})) for stop in locations]
-        raise HTTPException(
-            status_code=422,
-            detail={"message": "Selected service does not call at one of the requested stations.", "availableStops": available},
-        )
+    dep_t4 = boarding["planned_dep"]
+    arr_t4 = alighting["planned_arr"]
+    dep_m, arr_m = t4_mins(dep_t4), t4_mins(arr_t4)
+    next_day = dep_m is not None and arr_m is not None and arr_m < dep_m
 
-    departure = (boarding_stop.get("temporalData") or {}).get("departure") or temporal_for_public_stop(boarding_stop)
-    arrival = (alighting_stop.get("temporalData") or {}).get("arrival") or temporal_for_public_stop(alighting_stop)
-    dep_platform = ((boarding_stop.get("locationMetadata") or {}).get("platform") or {}).get("actual") or ((boarding_stop.get("locationMetadata") or {}).get("platform") or {}).get("planned")
-    arr_platform = ((alighting_stop.get("locationMetadata") or {}).get("platform") or {}).get("actual") or ((alighting_stop.get("locationMetadata") or {}).get("platform") or {}).get("planned")
+    dep_delay = boarding.get("delay")
+    if dep_delay is None:
+        dep_delay = diff_mins(boarding.get("rt_dep"), boarding.get("planned_dep"))
+    arr_delay = diff_mins(alighting.get("rt_arr"), alighting.get("planned_arr"))
 
-    def _fallback_crs(stop: dict[str, Any] | None) -> str:
-        if not stop:
-            return ""
-        loc = stop.get("location") or {}
-        codes = code_set(loc)
-        crs_like = sorted([c for c in codes if len(c) == 3 and c.isalpha()])
-        return crs_like[0] if crs_like else ""
-
-    origin_crs = pair_crs(service.get("origin")) or _fallback_crs(locations[0] if locations else None)
-    destination_crs = pair_crs(service.get("destination")) or _fallback_crs(locations[-1] if locations else None)
-
-    detail = {
-        "travelDate": metadata.get("departureDate"),
-        "identity": metadata.get("identity"),
-        "uniqueIdentity": metadata.get("uniqueIdentity") or (payload.get("query") or {}).get("uniqueIdentity"),
-        "departureDate": metadata.get("departureDate"),
-        "trainReportingIdentity": metadata.get("trainReportingIdentity"),
-        "operatorCode": operator.get("code"),
-        "operatorName": operator.get("name"),
-        "serviceOriginCrs": origin_crs,
-        "serviceDestinationCrs": destination_crs,
-        "boarded": {"crs": boarded.upper(), "name": location_name(boarding_stop.get("location") or {})},
-        "alighted": {"crs": alighted.upper(), "name": location_name(alighting_stop.get("location") or {})},
-        "plannedDeparture": planned_time(departure),
-        "actualDeparture": actual_time(departure),
-        "departureDisplay": display_time(actual_time(departure) or planned_time(departure)),
-        "departureLatenessMinutes": lateness(departure),
-        "plannedArrival": planned_time(arrival),
-        "actualArrival": actual_time(arrival),
-        "arrivalDisplay": display_time(actual_time(arrival) or planned_time(arrival)),
-        "arrivalLatenessMinutes": lateness(arrival),
-        "platformDeparture": dep_platform,
-        "platformArrival": arr_platform,
-        "isCancelledAtOrigin": bool(departure.get("isCancelled")),
-        "isCancelledAtDestination": bool(arrival.get("isCancelled")),
-        "callingPattern": [
-            {
-                "name": location_name(stop.get("location") or {}),
-                "codes": sorted(code_set(stop.get("location") or {})),
-                "planned": display_time(planned_time(temporal_for_public_stop(stop))),
-                "actual": display_time(actual_time(temporal_for_public_stop(stop))),
-                "latenessMinutes": lateness(temporal_for_public_stop(stop)),
-                "displayAs": (stop.get("temporalData") or {}).get("displayAs"),
-            }
-            for stop in locations
-        ],
-        "raw": payload,
+    return {
+        "identity":                 uid,
+        "departureDate":            dep_date,
+        "url":                      svc_url,
+        "operatorName":             operator,
+        "serviceOriginCrs":         stops[0]["crs"],
+        "serviceDestinationCrs":    stops[-1]["crs"],
+        "boarded":                  {"crs": origin_crs.upper(), "name": origin_crs.upper()},
+        "alighted":                 {"crs": dest_crs.upper(),   "name": dest_crs.upper()},
+        "plannedDeparture":         t4_to_iso(dep_date, dep_t4),
+        "plannedArrival":           t4_to_iso(dep_date, arr_t4, next_day),
+        "departureLatenessMinutes": dep_delay,
+        "arrivalLatenessMinutes":   arr_delay,
+        "platformDeparture":        boarding.get("platform"),
+        "platformArrival":          alighting.get("platform"),
+        "isCancelled":              False,
     }
-    return detail
 
 
-def save_journey(detail: dict[str, Any], direction: Optional[str], reason: Optional[str], detailed_reason: Optional[str]) -> int:
+# ── DB helpers ────────────────────────────────────────────────────────────────
+
+def save_journey(
+    detail: dict[str, Any],
+    direction: Optional[str],
+    reason: Optional[str],
+    detailed_reason: Optional[str],
+) -> int:
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute(
             """
             INSERT INTO journeys (
-                travel_date, boarded_crs, alighted_crs, service_identity, departure_date,
-                operator_code, operator_name, train_reporting_identity,
+                travel_date, boarded_crs, alighted_crs, departure_date,
+                operator_name,
                 service_origin_crs, service_destination_crs,
                 planned_departure, departure_lateness_minutes,
-                planned_arrival, arrival_lateness_minutes,
+                planned_arrival,   arrival_lateness_minutes,
                 platform_departure, platform_arrival,
-                direction, reason, detailed_reason, raw_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                direction, reason, detailed_reason, url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 detail.get("travelDate"),
                 detail["boarded"]["crs"],
                 detail["alighted"]["crs"],
-                detail.get("identity"),
                 detail.get("departureDate"),
-                detail.get("operatorCode"),
                 detail.get("operatorName"),
-                detail.get("trainReportingIdentity"),
                 detail.get("serviceOriginCrs"),
                 detail.get("serviceDestinationCrs"),
                 detail.get("plannedDeparture"),
@@ -439,33 +346,14 @@ def save_journey(detail: dict[str, Any], direction: Optional[str], reason: Optio
                 direction,
                 reason,
                 detailed_reason,
-                json.dumps(detail.get("raw"), ensure_ascii=False),
+                detail.get("url"),
             ),
         )
         conn.commit()
         return int(cursor.lastrowid)
 
 
-@app.get("/api/exchange-token")
-def exchange_token(token: str = Depends(get_rtt_token)) -> dict[str, Any]:
-    try:
-        response = requests.get(
-            f"{RTT_BASE_URL}/api/get_access_token",
-            headers=rtt_headers(token),
-            timeout=18,
-        )
-    except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"Token exchange request failed: {exc}") from exc
-    if not response.ok:
-        raise HTTPException(status_code=401, detail="Failed to exchange token. Make sure your RTT key is the refresh token from api-portal.rtt.io.")
-    data = response.json()
-    return {"accessToken": data.get("token"), "validUntil": data.get("validUntil"), "entitlements": data.get("entitlements")}
-
-
-@app.get("/api/rtt-info")
-def rtt_info(token: str = Depends(get_rtt_token)) -> dict[str, Any]:
-    return rtt_get("/api/info", token)
-
+# ── API endpoints ─────────────────────────────────────────────────────────────
 
 @app.get("/api/stations-local")
 def stations_local() -> dict[str, Any]:
@@ -477,35 +365,49 @@ def stations_local() -> dict[str, Any]:
 
 
 @app.post("/api/search-services")
-def search_services(request: SearchRequest, token: str = Depends(get_rtt_token)) -> dict[str, Any]:
-    requested_dt = datetime.fromisoformat(f"{request.travelDate}T{request.time}:00")
-    time_from = requested_dt - timedelta(minutes=request.windowMinutes)
-    time_to = requested_dt + timedelta(minutes=request.windowMinutes)
-    payload = rtt_get(
-        "/gb-nr/location",
-        token,
-        {
-            "code": request.originCrs.upper(),
-            "filterTo": request.destinationCrs.upper(),
-            "timeFrom": time_from.isoformat(timespec="seconds"),
-            "timeTo": time_to.isoformat(timespec="seconds"),
-            "detailed": "true",
-            "stpFilter": "WVSC",
-        },
+def search_services(request: SearchRequest, cookie: str = Depends(get_rtt_cookie)) -> dict[str, Any]:
+    time4 = request.time.replace(":", "")
+    search_url = (
+        f"{RTT_WEB}/search/simple"
+        f"/gb-nr:{request.originCrs.upper()}/to/gb-nr:{request.destinationCrs.upper()}"
+        f"/{request.travelDate}/{time4}"
     )
-    services = payload.get("services") or []
-    candidates = [normalise_candidate(item, request.originCrs, request.destinationCrs) for item in services]
-    candidates = [item for item in candidates if item.get("identity")]
-    if candidates:
-        with ThreadPoolExecutor(max_workers=min(6, len(candidates))) as executor:
-            futures = {
-                executor.submit(enrich_candidate_with_detail, candidate, request.originCrs, request.destinationCrs, token): index
-                for index, candidate in enumerate(candidates)
-            }
-            enriched = list(candidates)
-            for future in as_completed(futures):
-                enriched[futures[future]] = future.result()
-            candidates = enriched
+    soup = web_get(search_url, cookie)
+    page_text = soup.get_text()
+
+    if soup.select_one('form[action*="login"]'):
+        raise HTTPException(status_code=401, detail="RTT cookie expired or invalid.")
+    if "historical search horizon" in page_text:
+        raise HTTPException(status_code=403, detail="This date is beyond RTT's historical search horizon.")
+
+    req_mins = int(request.time[:2]) * 60 + int(request.time[3:])
+    raw_candidates: list[dict[str, Any]] = []
+    for a in soup.select('a.service[href*="/service/gb-nr:"]'):
+        parts = a["href"].lstrip("/").split("/")
+        uid      = parts[1].replace("gb-nr:", "")
+        dep_date = parts[2].split("#")[0]
+        time_el  = a.select_one("div.time")
+        t4_text  = time_el.get_text(strip=True) if time_el else ""
+        if not (t4_text and t4_text.isdigit() and len(t4_text) == 4):
+            continue
+        if abs(int(t4_text[:2]) * 60 + int(t4_text[2:]) - req_mins) > request.windowMinutes:
+            continue
+        raw_candidates.append({"uid": uid, "dep_date": dep_date, "dep_t4": t4_text})
+
+    def enrich(c: dict[str, Any]) -> dict[str, Any] | None:
+        try:
+            return scrape_service_page(c["uid"], c["dep_date"], request.originCrs, request.destinationCrs, cookie)
+        except HTTPException:
+            return None
+
+    candidates: list[dict[str, Any]] = []
+    if raw_candidates:
+        with ThreadPoolExecutor(max_workers=min(6, len(raw_candidates))) as executor:
+            for result in executor.map(enrich, raw_candidates):
+                if result:
+                    candidates.append(result)
+
+    candidates.sort(key=lambda c: c.get("plannedDeparture") or "")
     return {
         "query": request.model_dump(),
         "candidateCount": len(candidates),
@@ -514,20 +416,40 @@ def search_services(request: SearchRequest, token: str = Depends(get_rtt_token))
 
 
 @app.post("/api/resolve-service")
-def resolve_service(request: ResolveRequest, token: str = Depends(get_rtt_token)) -> dict[str, Any]:
-    payload = rtt_get(
-        "/gb-nr/service",
-        token,
-        {
-            "identity": request.identity,
-            "departureDate": request.departureDate,
-        },
+def resolve_service(request: ResolveRequest, cookie: str = Depends(get_rtt_cookie)) -> dict[str, Any]:
+    detail = scrape_service_page(
+        request.identity,
+        request.departureDate,
+        request.originCrs,
+        request.destinationCrs,
+        cookie,
     )
-    detail = normalise_detail(payload, request.originCrs, request.destinationCrs)
+    detail["travelDate"] = request.travelDate
+
     saved_id: int | None = None
     if request.save:
         saved_id = save_journey(detail, request.direction, request.reason, request.detailedReason)
     return {"journeyId": saved_id, "detail": detail}
+
+
+class UpdateJourneyRequest(BaseModel):
+    direction: Optional[str] = None
+    reason: Optional[str] = None
+    detailed_reason: Optional[str] = None
+
+
+@app.patch("/api/journeys/{journey_id}")
+def update_journey(journey_id: int, body: UpdateJourneyRequest) -> dict[str, Any]:
+    init_db()
+    with sqlite3.connect(DB_PATH) as conn:
+        result = conn.execute(
+            "UPDATE journeys SET direction = ?, reason = ?, detailed_reason = ? WHERE id = ?",
+            (body.direction, body.reason, body.detailed_reason, journey_id),
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Journey not found")
+        conn.commit()
+    return {"updated": journey_id}
 
 
 @app.delete("/api/journeys/{journey_id}")
@@ -541,18 +463,18 @@ def delete_journey(journey_id: int) -> dict[str, Any]:
 
 
 @app.get("/api/journeys")
-def list_journeys(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any]:
+def list_journeys(limit: int = Query(default=20, ge=1, le=800)) -> dict[str, Any]:
     init_db()
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
-            SELECT id, travel_date, boarded_crs, alighted_crs, service_identity,
-                   departure_date, operator_name, train_reporting_identity,
+            SELECT id, travel_date, boarded_crs, alighted_crs,
+                   departure_date, operator_name,
                    service_origin_crs, service_destination_crs, planned_departure,
                    departure_lateness_minutes, planned_arrival,
                    arrival_lateness_minutes, platform_departure,
-                   platform_arrival, direction, reason, detailed_reason, created_at
+                   platform_arrival, direction, reason, detailed_reason, url, created_at
             FROM journeys
             ORDER BY travel_date DESC, id DESC
             LIMIT ?
