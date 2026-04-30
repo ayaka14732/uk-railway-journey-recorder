@@ -52,17 +52,6 @@ def sqlite_path_from_env() -> Path:
 DB_PATH = sqlite_path_from_env()
 RTT_BASE_URL = os.getenv("RTT_BASE_URL", "https://data.rtt.io").rstrip("/")
 RTT_API_VERSION = os.getenv("RTT_API_VERSION", "2026-04-09")
-RTT_TOKEN = os.getenv("RTT_API_TOKEN", "").strip()
-FALLBACK_STATIONS = [
-    {"crs": "MKC", "name": "Milton Keynes Central", "longCode": "MILTONK"},
-    {"crs": "EUS", "name": "London Euston", "longCode": "EUSTON"},
-    {"crs": "BHM", "name": "Birmingham New Street", "longCode": "BHAMNWS"},
-    {"crs": "MAN", "name": "Manchester Piccadilly", "longCode": "MNCRPIC"},
-    {"crs": "GLC", "name": "Glasgow Central", "longCode": "GLGC"},
-    {"crs": "CRE", "name": "Crewe", "longCode": "CREWE"},
-    {"crs": "RUG", "name": "Rugby", "longCode": "RUGBY"},
-    {"crs": "WFJ", "name": "Watford Junction", "longCode": "WATFDJ"},
-]
 
 
 class SearchRequest(BaseModel):
@@ -168,7 +157,7 @@ def rtt_headers(token: str) -> dict[str, str]:
 
 
 def get_rtt_token(x_rtt_token: Annotated[Optional[str], Header()] = None) -> str:
-    token = (x_rtt_token or RTT_TOKEN or "").strip()
+    token = (x_rtt_token or "").strip()
     if not token:
         raise HTTPException(
             status_code=401,
@@ -490,16 +479,13 @@ def stations_local() -> dict[str, Any]:
 @app.get("/api/stations")
 def stations(q: str = Query(default="", min_length=0, max_length=80), token: str = Depends(get_rtt_token)) -> dict[str, Any]:
     query = q.strip().lower()
-    try:
-        payload = rtt_get("/data/stops", token)
-        stops = payload.get("stops") or []
-        normalised = [
-            {"crs": stop.get("shortCode"), "name": stop.get("description"), "uniqueIdentity": stop.get("uniqueIdentity")}
-            for stop in stops
-            if stop.get("shortCode") and stop.get("description")
-        ]
-    except HTTPException:
-        normalised = FALLBACK_STATIONS
+    payload = rtt_get("/data/stops", token)
+    stops = payload.get("stops") or []
+    normalised = [
+        {"crs": stop.get("shortCode"), "name": stop.get("description"), "uniqueIdentity": stop.get("uniqueIdentity")}
+        for stop in stops
+        if stop.get("shortCode") and stop.get("description")
+    ]
     if query:
         normalised = [s for s in normalised if query in str(s.get("crs", "")).lower() or query in str(s.get("name", "")).lower()]
     return {"stations": normalised[:50]}
