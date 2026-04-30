@@ -4,9 +4,11 @@
  * Avoid decorative imagery, animation, language switching, platform fields, and detail panels.
  */
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { Cell, Legend, Pie, PieChart, Tooltip } from "recharts";
 
-type Station = { crs: string; name: string };
+type Station = { crs: string; name: string; lat?: number; long?: number };
 
 type SearchForm = {
   travelDate: string;
@@ -80,6 +82,7 @@ type StoredJourney = {
 
 const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
 
+// Selected from https://en.wikipedia.org/wiki/Wikipedia:WikiProject_UK_Railways/Colours_list
 const OPERATOR_COLORS: Record<string, string> = {
   "Avanti West Coast": "004354",
   "c2c": "b7007c",
@@ -103,6 +106,7 @@ const OPERATOR_COLORS: Record<string, string> = {
   "Thameslink": "ff5aa4",
   "TransPennine Express": "09a4ec",
   "Transport for Wales": "ff0000",
+  "West Midlands Trains": "ff8300",
 };
 
 const DEFAULT_FORM: SearchForm = {
@@ -285,6 +289,8 @@ export default function Home() {
   const [pendingCandidate, setPendingCandidate] = useState<Candidate | null>(null);
   const [viewingDetail, setViewingDetail] = useState<StoredJourney | null>(null);
   const [showStats, setShowStats] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const mapRef = useRef<HTMLDivElement>(null);
   const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [addReason, setAddReason] = useState<"Love" | "Leisure" | "Life" | "Work">("Love");
   const [addDetailedReason, setAddDetailedReason] = useState<string>("");
@@ -355,6 +361,49 @@ export default function Home() {
     loadStations();
   }, []);
 
+  useEffect(() => {
+    if (!showMap || !mapRef.current) return;
+    const map = L.map(mapRef.current).setView([54, -2], 6);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors",
+    }).addTo(map);
+
+    const routeCounts = new Map<string, number>();
+    for (const j of history) {
+      const key = [j.boarded_crs, j.alighted_crs].sort().join("|");
+      routeCounts.set(key, (routeCounts.get(key) ?? 0) + 1);
+    }
+    function routeColor(count: number): string {
+      if (count < 3)  return "#4a90d9";
+      if (count < 6)  return "#f5a623";
+      if (count < 10) return "#e07000";
+      return "#e0001b";
+    }
+
+    const drawnRoutes = new Set<string>();
+    const drawnStations = new Set<string>();
+    for (const j of history) {
+      const key = [j.boarded_crs, j.alighted_crs].sort().join("|");
+      const from = stations.find((s) => s.crs === j.boarded_crs);
+      const to = stations.find((s) => s.crs === j.alighted_crs);
+      if (!from?.lat || !to?.lat) continue;
+      if (!drawnRoutes.has(key)) {
+        const count = routeCounts.get(key) ?? 1;
+        L.polyline([[from.lat, from.long!], [to.lat, to.long!]], { color: routeColor(count), weight: 3, opacity: 0.85 })
+          .addTo(map).bindPopup(`${from.name} ↔ ${to.name} (${count}×)`);
+        drawnRoutes.add(key);
+      }
+      for (const st of [from, to]) {
+        if (!drawnStations.has(st.crs)) {
+          L.circleMarker([st.lat!, st.long!], { radius: 3, color: "#333333", fillColor: "#333333", fillOpacity: 1, weight: 0 })
+            .addTo(map).bindPopup(st.name);
+          drawnStations.add(st.crs);
+        }
+      }
+    }
+    return () => { map.remove(); };
+  }, [showMap]);
+
   async function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -415,7 +464,10 @@ export default function Home() {
     <main className="plain-shell">
       <header className="plain-header">
         <div className="brand-mark">UK Rail History</div>
-        <button type="button" className="stats-header-btn" onClick={() => setShowStats(true)}>Stats</button>
+        <div className="header-actions">
+          <button type="button" className="stats-header-btn" onClick={() => setShowStats(true)}>Stats</button>
+          <button type="button" className="stats-header-btn" onClick={() => setShowMap(true)}>Map</button>
+        </div>
         <button type="button" className="token-header-btn" onClick={() => { setDraftToken(apiToken); setDialogStatus("idle"); setShowTokenDialog(true); }}>
           {apiToken ? "Token ✓" : "Set token"}
         </button>
@@ -545,6 +597,21 @@ export default function Home() {
             </div>
             <div className="token-dialog-actions">
               <button type="button" onClick={() => setShowStats(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMap && (
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowMap(false); }}>
+          <div className="token-dialog map-dialog">
+            <div className="token-dialog-header">
+              <span>Journey Map — {history.length} journeys</span>
+              <button type="button" className="token-dialog-close" onClick={() => setShowMap(false)}>×</button>
+            </div>
+            <div ref={mapRef} className="map-container" />
+            <div className="token-dialog-actions">
+              <button type="button" onClick={() => setShowMap(false)}>Close</button>
             </div>
           </div>
         </div>

@@ -102,18 +102,27 @@ def init_db() -> None:
             """
             CREATE TABLE IF NOT EXISTS stations (
                 crs  TEXT PRIMARY KEY,
-                name TEXT NOT NULL
+                name TEXT NOT NULL,
+                lat  REAL,
+                long REAL
             )
             """
         )
-        if conn.execute("SELECT COUNT(*) FROM stations").fetchone()[0] == 0:
-            csv_path = ROOT_DIR / "crs.csv"
-            if csv_path.exists():
-                with open(csv_path, newline="", encoding="utf-8") as f:
-                    conn.executemany(
-                        "INSERT OR IGNORE INTO stations (crs, name) VALUES (?, ?)",
-                        ((r["crs"], r["name"]) for r in csv.DictReader(f) if r.get("crs")),
-                    )
+        existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(stations)").fetchall()}
+        if "lat" not in existing_cols:
+            conn.execute("ALTER TABLE stations ADD COLUMN lat REAL")
+        if "long" not in existing_cols:
+            conn.execute("ALTER TABLE stations ADD COLUMN long REAL")
+        csv_path = ROOT_DIR / "crs.csv"
+        if csv_path.exists():
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                conn.executemany(
+                    "INSERT OR REPLACE INTO stations (crs, name, lat, long) VALUES (?, ?, ?, ?)",
+                    (
+                        (r["crs"], r["name"], float(r["lat"]) if r.get("lat") else None, float(r["long"]) if r.get("long") else None)
+                        for r in csv.DictReader(f) if r.get("crs")
+                    ),
+                )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS journeys (
@@ -474,7 +483,7 @@ def stations_local() -> dict[str, Any]:
     init_db()
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
-        rows = conn.execute("SELECT crs, name FROM stations ORDER BY name").fetchall()
+        rows = conn.execute("SELECT crs, name, lat, long FROM stations ORDER BY name").fetchall()
     return {"stations": [dict(r) for r in rows]}
 
 
