@@ -6,7 +6,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Cell, Legend, Pie, PieChart, Tooltip } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type Station = { crs: string; name: string; lat?: number; long?: number };
 
@@ -285,7 +285,7 @@ export default function Home() {
   const [history, setHistory] = useState<StoredJourney[]>([]);
   const [sortAsc, setSortAsc] = useState(false);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
-  const [savedKeyById, setSavedKeyById] = useState<Map<number, string>>(() => new Map());
+  const savedKeyById = useRef<Map<number, string>>(new Map());
   const [pendingCandidate, setPendingCandidate] = useState<Candidate | null>(null);
 
   const [showStats, setShowStats] = useState(false);
@@ -308,8 +308,57 @@ export default function Home() {
       const key = j.operator_name || "Unknown";
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
-    return Array.from(counts.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    const threshold = history.length * 0.02;
+    const result: { name: string; value: number }[] = [];
+    let othersCount = 0;
+    for (const [name, value] of sorted) {
+      if (value >= threshold) result.push({ name, value });
+      else othersCount += value;
+    }
+    if (othersCount > 0) result.push({ name: "Others", value: othersCount });
+    return result;
   }, [history]);
+
+  const arrivalDelayData = useMemo(() => {
+    const buckets = [
+      { name: "< 5 min", min: -Infinity, max: 5, value: 0 },
+      { name: "5–15 min", min: 5, max: 15, value: 0 },
+      { name: "15–30 min", min: 15, max: 30, value: 0 },
+      { name: "30–60 min", min: 30, max: 60, value: 0 },
+      { name: "60+ min", min: 60, max: Infinity, value: 0 },
+    ];
+    for (const j of history) {
+      if (j.arrival_lateness_minutes == null) continue;
+      const m = j.arrival_lateness_minutes;
+      for (const b of buckets) {
+        if (m >= b.min && m < b.max) { b.value++; break; }
+      }
+    }
+    return buckets;
+  }, [history]);
+
+  const monthlyData = useMemo(() => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const counts = new Array(12).fill(0);
+    for (const j of history) {
+      const m = parseInt(j.travel_date.slice(5, 7), 10) - 1;
+      if (m >= 0 && m < 12) counts[m]++;
+    }
+    return months.map((name, i) => ({ name, value: counts[i] }));
+  }, [history]);
+
+  const topStationsData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const j of history) {
+      counts.set(j.boarded_crs, (counts.get(j.boarded_crs) ?? 0) + 1);
+      counts.set(j.alighted_crs, (counts.get(j.alighted_crs) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([crs, value]) => ({ name: stationMap.get(crs) ? `${stationMap.get(crs)} (${crs})` : crs, value }));
+  }, [history, stationMap]);
 
   const reasonData = useMemo(() => {
     const counts = new Map<string, number>();
@@ -354,14 +403,11 @@ export default function Home() {
     try {
       await apiJson(`/api/journeys/${id}`, { method: "DELETE" });
       setHistory((prev) => prev.filter((j) => j.id !== id));
-      setSavedKeyById((prev) => {
-        const key = prev.get(id);
-        if (!key) return prev;
-        const nextById = new Map(prev);
-        nextById.delete(id);
+      const key = savedKeyById.current.get(id);
+      if (key) {
+        savedKeyById.current.delete(id);
         setSavedKeys((prevKeys) => { const next = new Set(prevKeys); next.delete(key); return next; });
-        return nextById;
-      });
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     }
@@ -477,7 +523,7 @@ export default function Home() {
       const savedKey = `${candidate.identity}-${candidate.departureDate}`;
       setSavedKeys((previous) => new Set(previous).add(savedKey));
       if (data.journeyId !== null) {
-        setSavedKeyById((prev) => new Map(prev).set(data.journeyId!, savedKey));
+        savedKeyById.current.set(data.journeyId!, savedKey);
       }
       setMessage(`Added ${data.detail.identity || candidate.identity} to journey history.`);
       await loadHistory();
@@ -608,27 +654,71 @@ export default function Home() {
               <span>Statistics</span>
               <button type="button" className="token-dialog-close" onClick={() => setShowStats(false)}>×</button>
             </div>
+            <div className="stats-charts-scroll">
             <div className="stats-charts">
               <div className="stats-chart">
                 <div className="stats-chart-title">By Operator</div>
-                <PieChart width={520} height={300}>
-                  <Pie data={operatorData} cx={150} cy={150} outerRadius={120} dataKey="value" isAnimationActive={false}>
-                    {operatorData.map((entry, i) => <Cell key={i} fill={OPERATOR_COLORS[entry.name] ? `#${OPERATOR_COLORS[entry.name]}` : CHART_COLORS[i % CHART_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip formatter={(v, n) => [v, n]} />
-                  <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 11, maxHeight: 280, overflowY: "auto", paddingLeft: 8 }} />
-                </PieChart>
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie data={operatorData} cx="42%" cy="50%" outerRadius={110} dataKey="value" isAnimationActive={false}
+                      label={false}>
+                      {operatorData.map((entry, i) => <Cell key={i} fill={OPERATOR_COLORS[entry.name] ? `#${OPERATOR_COLORS[entry.name]}` : CHART_COLORS[i % CHART_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number, n) => [`${v} (${(v / operatorData.reduce((s, d) => s + d.value, 0) * 100).toFixed(1)}%)`, n]} />
+                    <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 12, paddingLeft: 8 }} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
               <div className="stats-chart">
                 <div className="stats-chart-title">By Reason</div>
-                <PieChart width={340} height={240}>
-                  <Pie data={reasonData} cx={130} cy={110} outerRadius={90} dataKey="value" label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false} isAnimationActive={false}>
-                    {reasonData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip formatter={(v, n) => [v, n]} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                </PieChart>
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie data={reasonData} cx="42%" cy="50%" outerRadius={110} dataKey="value" isAnimationActive={false}
+                      label={false}>
+                      {reasonData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number, n) => [`${v} (${(v / reasonData.reduce((s, d) => s + d.value, 0) * 100).toFixed(1)}%)`, n]} />
+                    <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 12, paddingLeft: 8 }} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
+              <div className="stats-chart">
+                <div className="stats-chart-title">Journeys by Month</div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={monthlyData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
+                    <Tooltip labelFormatter={() => ""} itemStyle={{ color: "#111111" }} formatter={(v: number) => [`${v} (${history.length > 0 ? (v / history.length * 100).toFixed(1) : 0}%)`, "Journeys"]} />
+                    <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="stats-chart">
+                <div className="stats-chart-title">Arrival Delay Distribution</div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={arrivalDelayData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
+                    <Tooltip itemStyle={{ color: "#111111" }} formatter={(v: number) => { const t = arrivalDelayData.reduce((s, d) => s + d.value, 0); return [`${v} (${t > 0 ? (v / t * 100).toFixed(1) : 0}%)`, "Journeys"]; }} />
+                    <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="stats-chart">
+                <div className="stats-chart-title">Top Stations</div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={topStationsData} layout="vertical" margin={{ top: 4, right: 32, bottom: 4, left: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" width={200} tick={{ fontSize: 11 }} tickFormatter={(v: string) => v.length > 28 ? v.slice(0, 27) + "…" : v} />
+                    <Tooltip labelFormatter={() => ""} itemStyle={{ color: "#111111" }} formatter={(v: number) => [`${v} (${history.length > 0 ? (v / (history.length * 2) * 100).toFixed(1) : 0}%)`, "Journeys"]} />
+                    <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
             </div>
             <div className="token-dialog-actions">
               <button type="button" onClick={() => setShowStats(false)}>Close</button>

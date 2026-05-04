@@ -219,8 +219,17 @@
   z-index: 100;
 }
 
-.stats-dialog {
-  width: min(600px, 96vw);
+.token-dialog.stats-dialog {
+  width: 96vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-charts-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .token-dialog.map-dialog {
@@ -237,23 +246,24 @@
 }
 
 .stats-charts {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
   gap: 16px;
-  padding: 16px 12px 4px;
+  padding: 16px;
 }
 
 .stats-chart {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 }
 
 .stats-chart-title {
   font-weight: 700;
   font-size: 12px;
   color: #444444;
+  text-align: center;
   margin-bottom: 4px;
   letter-spacing: 0.05em;
 }
