@@ -190,8 +190,10 @@ function StationInput({
 }) {
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeItemRef = useRef<HTMLDivElement>(null);
 
   const matched = useMemo(() => stations.find((s) => s.crs === value), [stations, value]);
   const displayLabel = matched ? `${matched.name} (${matched.crs})` : value;
@@ -208,6 +210,12 @@ function StationInput({
     });
     return results.slice(0, 15);
   }, [stations, query, editing]);
+
+  useEffect(() => { setActiveIndex(0); }, [filtered]);
+
+  useEffect(() => {
+    activeItemRef.current?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
 
   useEffect(() => {
     if (editing) inputRef.current?.select();
@@ -236,23 +244,31 @@ function StationInput({
         ref={inputRef}
         value={editing ? query : displayLabel}
         readOnly={!editing}
-        onFocus={() => { setEditing(true); setQuery(value); }}
+        onFocus={() => { setEditing(true); setQuery(displayLabel); }}
+        onClick={() => { if (!editing) { setEditing(true); setQuery(displayLabel); } }}
         onChange={(e) => setQuery(e.target.value)}
         onBlur={() => setTimeout(() => { setEditing(false); setQuery(""); }, 150)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && filtered.length > 0) {
+          if (e.key === "ArrowDown") {
             e.preventDefault();
-            commit(filtered[0].crs);
+            setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActiveIndex((i) => Math.max(i - 1, 0));
+          } else if (e.key === "Enter" && filtered.length > 0) {
+            e.preventDefault();
+            commit(filtered[activeIndex].crs);
           }
         }}
         placeholder={editing ? "Type station name or CRS…" : undefined}
       />
       {editing && filtered.length > 0 && (
         <div className="station-dropdown">
-          {filtered.map((s) => (
+          {filtered.map((s, i) => (
             <div
               key={s.crs}
-              className="station-option"
+              ref={i === activeIndex ? activeItemRef : null}
+              className={`station-option${i === activeIndex ? " active" : ""}`}
               onMouseDown={() => commit(s.crs)}
             >
               <span>{s.name}</span><span className="station-crs">{s.crs}</span>

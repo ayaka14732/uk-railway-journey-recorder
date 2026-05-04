@@ -455,7 +455,8 @@
   border-bottom: 1px solid var(--sbb-line);
 }
 
-.station-option:hover {
+.station-option:hover,
+.station-option.active {
   background: var(--sbb-soft);
 }
 
