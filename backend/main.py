@@ -10,7 +10,7 @@ import csv
 import os
 import re
 import sqlite3
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Optional
@@ -42,10 +42,8 @@ load_local_env()
 
 
 def sqlite_path_from_env() -> Path:
-    configured = os.getenv("RAIL_HISTORY_SQLITE_PATH") or os.getenv("DATABASE_URL")
-    if configured and not configured.startswith(("mysql:", "postgres:", "postgresql:")):
-        if configured.startswith("sqlite:///"):
-            return Path(configured.replace("sqlite:///", "", 1))
+    configured = os.getenv("RAIL_HISTORY_SQLITE_PATH")
+    if configured:
         return Path(configured)
     return ROOT_DIR / "rail_history.sqlite3"
 

@@ -1,65 +1,77 @@
 # UK Railway Journey Recorder
 
-記錄英國火車旅程的工具。查詢 [Realtime Trains](https://api.rtt.io/) 取得列車時刻與誤點資料，並儲存至本地 SQLite。
+用最少的输入，自动补全英国火车旅程的全部信息，并储存到本地数据库。
 
-## 架構
+## 项目目的
 
-| 層級 | 技術 | 埠號 |
-|------|------|------|
-| 前端 | React + TypeScript + Vite | 3000 |
-| 後端 | FastAPI + Python 3.11 | 8000 |
-| 資料庫 | SQLite（自動建立） | — |
+我以前记录英国铁路旅程的方式是手动录入 Google Sheet，每次都要填写大量字段，非常繁琐。
 
-Vite 開發伺服器會自動把 `/api/*` 請求代理到後端（`:8000`），API token 不會暴露給瀏覽器。
+这个项目受到 [myFlightradar24](https://my.flightradar24.com/) 记录飞行历史的思路启发：只要输入出发站、到达站、大致上车时间，就能在 [Realtime Trains (RTT)](https://www.realtimetrains.co.uk/) 上查找候选车次；用户选择后，就能进一步自动获取该车次的运营商、计划时刻、实际时刻、晚点原因等全部详细信息。绝大多数字段不再需要手动填写。
 
-## 前置需求
+## 项目设计
 
-- Node.js 18+，pnpm（`npm i -g pnpm`）
-- Python 3.11
-- Realtime Trains API token（在 [api.rtt.io](https://api.rtt.io/) 申請）
+### 数据来源
 
-## 首次設定
+[Realtime Trains](https://www.realtimetrains.co.uk/) 是英国铁路的实时与历史列车信息网站。付费订阅（£4）后可以查询过去 5 年内的所有车次信息。
+
+RTT 提供 API，但即使是付费用户，使用 API 也只能查询最近 14 天的数据，不支持查询 5 年历史，因此本项目使用 web scraping：由后端直接请求 RTT 网页，用 BeautifulSoup4 解析 HTML，提取所需数据。
+
+由于 RTT 需要登录后才能查看 14 天以前的历史数据，所以查询 14 天前的车次时，用户需要在前端页面手动填入自己的 RTT Cookie，后端会携带该 Cookie 去请求 RTT 网页。
+
+### 数据库
+
+使用 SQLite。本项目设计为个人本地使用，数据量有限，SQLite 已完全足够，无需额外部署数据库服务。
+
+### 技术栈
+
+| 层级   | 技术                          | 端口 |
+|--------|-------------------------------|------|
+| 前端   | TypeScript + React + Vite     | 3000 |
+| 后端   | Python + FastAPI              | 8000 |
+| 数据库 | SQLite（自动创建）            | —    |
+| 爬虫   | requests + BeautifulSoup4     | —    |
+
+Vite 开发服务器会将所有 `/api/*` 请求代理到后端（`:8000`），Cookie 不会暴露给浏览器之外。
+
+## 运行方法
+
+### 首次安装
 
 ```bash
-# 安裝前端相依套件
+# 安装前端依赖
 pnpm install
 
-# 建立 Python 虛擬環境並安裝後端相依套件
+# 创建 Python 虚拟环境并安装后端依赖
 python3 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt
 ```
 
-API token 在瀏覽器介面裡輸入，存在 `localStorage`，不需要後端設定檔。
+### 启动开发环境
 
-## 啟動開發環境
-
-需要開兩個終端機：
+需要同时开启两个终端：
 
 ```bash
-# 終端機 1：啟動 FastAPI 後端
+# 终端 1：启动 FastAPI 后端
 pnpm api
 
-# 終端機 2：啟動 Vite 前端
+# 终端 2：启动 Vite 前端
 pnpm dev
 ```
 
-瀏覽器開啟 http://localhost:3000，在頁面頂部的 **RTT Key** 欄位貼上你的 bearer token 即可使用。
+浏览器访问 http://localhost:3000，在页面顶部的 **Cookie** 输入框中粘贴你的 RTT Cookie 即可开始使用。
 
-## 可選的後端環境變數
+### 环境变量
 
-後端支援從環境變數讀取 token 作為 fallback（適合伺服器部署）。在 `backend/.env` 設定：
+| 变量                        | 必填 | 说明                                                                 |
+|-----------------------------|------|----------------------------------------------------------------------|
+| `RAIL_HISTORY_SQLITE_PATH`  | 否   | SQLite 文件路径；未设置时默认为项目根目录下的 `rail_history.sqlite3` |
 
-| 變數 | 預設值 | 說明 |
-|------|--------|------|
-| `RTT_API_TOKEN` | — | 伺服器端 fallback token（前端傳入的 token 優先） |
-| `RTT_BASE_URL` | `https://data.rtt.io` | RTT API 基礎位址 |
-| `RTT_API_VERSION` | `2026-04-09` | RTT API 版本 |
-| `RAIL_HISTORY_SQLITE_PATH` | `rail_history.sqlite3`（專案根目錄） | SQLite 檔案路徑 |
-
-## 其他指令
+## 其他
 
 ```bash
-pnpm build    # 生產版本打包
-pnpm check    # TypeScript 型別檢查
+pnpm check    # TypeScript 类型检查
 pnpm format   # Prettier 格式化
+pnpm build    # 生产版本打包
 ```
+
+本项目使用 Vibe Coding 开发，使用 [Manus AI](https://manus.im/) 编写，并使用 [Claude Code](https://claude.ai/code) 进行改进。
