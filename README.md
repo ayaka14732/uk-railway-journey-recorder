@@ -1,6 +1,6 @@
-# UK Rail History
+# UK Railway Journey Recorder
 
-記錄英國火車旅程的個人工具。查詢 [Realtime Trains](https://api.rtt.io/) 取得列車時刻與誤點資料，並儲存至本地 SQLite。
+記錄英國火車旅程的工具。查詢 [Realtime Trains](https://api.rtt.io/) 取得列車時刻與誤點資料，並儲存至本地 SQLite。
 
 ## 架構
 
