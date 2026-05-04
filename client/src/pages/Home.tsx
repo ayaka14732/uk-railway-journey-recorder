@@ -298,6 +298,7 @@ export default function Home() {
   const [savingId, setSavingId] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
   const [history, setHistory] = useState<StoredJourney[]>([]);
   const [sortAsc, setSortAsc] = useState(false);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
@@ -307,7 +308,7 @@ export default function Home() {
   const [showStats, setShowStats] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
-  const [hidePersonalCols, setHidePersonalCols] = useState(false);
+  const [hidePersonalCols, setHidePersonalCols] = useState(() => localStorage.getItem("hide_personal_cols") === "1");
   const mapRef = useRef<HTMLDivElement>(null);
   const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [addReason, setAddReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
@@ -510,6 +511,7 @@ export default function Home() {
         }),
       });
       setCandidates(data.candidates);
+      setHasSearched(true);
       setMessage(data.candidates.length ? `Found ${data.candidates.length} candidate services.` : "No matching services found.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
@@ -773,7 +775,7 @@ export default function Home() {
             </div>
             <div className="options-body">
               <label className="options-row">
-                <input type="checkbox" checked={hidePersonalCols} onChange={(e) => setHidePersonalCols(e.target.checked)} />
+                <input type="checkbox" checked={hidePersonalCols} onChange={(e) => { setHidePersonalCols(e.target.checked); localStorage.setItem("hide_personal_cols", e.target.checked ? "1" : "0"); }} />
                 Hide Dir, Reason and Detailed Reason
               </label>
             </div>
@@ -799,8 +801,9 @@ export default function Home() {
 
       {message && <div className="message-line" role="status">{message}</div>}
 
-      <section className="table-section">
+      {hasSearched && <section className="table-section">
         <div className="section-title"><h2>Candidate Services</h2><span>{candidateCount} rows</span></div>
+
         <div className="plain-table candidate-table">
           <div className="table-head candidate-row">
             <span>Service</span><span>Svc from</span><span>Svc to</span><span>Operator</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span>Action</span>
@@ -827,7 +830,7 @@ export default function Home() {
             );
           })}
         </div>
-      </section>
+      </section>}
 
       <section className="table-section">
         <div className="section-title"><h2>Journey History</h2><div style={{display:"flex",gap:"4px"}}><button type="button" onClick={() => setSortAsc(v => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑ Asc" : "↓ Desc"}</button><button type="button" onClick={loadHistory}>Refresh</button></div></div>
