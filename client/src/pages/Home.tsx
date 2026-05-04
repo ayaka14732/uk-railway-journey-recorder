@@ -306,6 +306,8 @@ export default function Home() {
 
   const [showStats, setShowStats] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
+  const [hidePersonalCols, setHidePersonalCols] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [addReason, setAddReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
@@ -553,10 +555,14 @@ export default function Home() {
   return (
     <main className="plain-shell">
       <header className="plain-header">
-        <div className="brand-mark">UK Rail History</div>
+        <div className="brand-mark">
+          <img src="/national-rail.svg" alt="National Rail" />
+          My UK Railway Journeys
+        </div>
         <div className="header-actions">
           <button type="button" className="stats-header-btn" onClick={() => setShowStats(true)}>Stats</button>
           <button type="button" className="stats-header-btn" onClick={() => setShowMap(true)}>Map</button>
+          <button type="button" className="stats-header-btn" onClick={() => setShowOptions(true)}>Options</button>
         </div>
         <button type="button" className="token-header-btn" onClick={() => { setDraftCookie(rttCookie); setShowTokenDialog(true); }}>
           {rttCookie ? "Cookie ✓" : "Set cookie"}
@@ -758,6 +764,26 @@ export default function Home() {
         </div>
       )}
 
+      {showOptions && (
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowOptions(false); }}>
+          <div className="token-dialog options-dialog">
+            <div className="token-dialog-header">
+              <span>Options</span>
+              <button type="button" className="token-dialog-close" onClick={() => setShowOptions(false)}>×</button>
+            </div>
+            <div className="options-body">
+              <label className="options-row">
+                <input type="checkbox" checked={hidePersonalCols} onChange={(e) => setHidePersonalCols(e.target.checked)} />
+                Hide Dir, Reason and Detailed Reason
+              </label>
+            </div>
+            <div className="token-dialog-actions">
+              <button type="button" onClick={() => setShowOptions(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="search-panel">
         <div className="section-title"><h2>New Journey</h2></div>
         <form className="search-form" onSubmit={search}>
@@ -809,12 +835,12 @@ export default function Home() {
           <table>
             <thead>
               <tr className="table-head history-row">
-                <th>Date</th><th>Operator</th><th>From</th><th>To</th><th>Svc from</th><th>Svc to</th><th>Dir</th><th>Reason</th><th>Detailed Reason</th><th>Booked dep</th><th>Dep delay</th><th>Dep plat</th><th>Booked arr</th><th>Arr delay</th><th>Arr plat</th><th></th>
+                <th>Date</th><th>Operator</th><th>From</th><th>To</th><th>Svc from</th><th>Svc to</th>{!hidePersonalCols && <><th>Dir</th><th>Reason</th><th>Detailed Reason</th></>}<th>Booked dep</th><th>Dep delay</th><th>Dep plat</th><th>Booked arr</th><th>Arr delay</th><th>Arr plat</th><th></th>
               </tr>
             </thead>
             <tbody>
               {sortedHistory.length === 0 ? (
-                <tr><td colSpan={16} className="empty-row">No journeys saved.</td></tr>
+                <tr><td colSpan={hidePersonalCols ? 13 : 16} className="empty-row">No journeys saved.</td></tr>
               ) : sortedHistory.map((item) => (
                 <tr className="data-row history-row" key={item.id}>
                   <td>{item.travel_date.replace(/-/g, "")}</td>
@@ -823,9 +849,7 @@ export default function Home() {
                   <td>{stationLabel(item.alighted_crs)}</td>
                   <td>{stationLabel(item.service_origin_crs)}</td>
                   <td>{stationLabel(item.service_destination_crs)}</td>
-                  <td>{item.direction ?? "—"}</td>
-                  <td>{item.reason ?? "—"}</td>
-                  <td>{item.detailed_reason ?? "—"}</td>
+                  {!hidePersonalCols && <><td>{item.direction ?? "—"}</td><td>{item.reason ?? "—"}</td><td>{item.detailed_reason ?? "—"}</td></>}
                   <td>{timeOnly(item.planned_departure)}</td>
                   <td><b className={delayClass(item.departure_lateness_minutes)}>{delayText(item.departure_lateness_minutes)}</b></td>
                   <td>{item.platform_departure ?? "—"}</td>

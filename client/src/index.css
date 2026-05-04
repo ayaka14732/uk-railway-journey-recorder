@@ -170,10 +170,20 @@
 }
 
 .brand-mark {
-  padding: 4px 8px;
-  background: var(--sbb-red);
-  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  color: #000000;
+  font-size: 15px;
   font-weight: 700;
+}
+
+.brand-mark img {
+  height: 1.2em;
+  width: auto;
+  user-select: none;
+  pointer-events: none;
 }
 
 .search-panel,
@@ -230,6 +240,22 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+.token-dialog.options-dialog {
+  width: 320px;
+}
+
+.options-body {
+  padding: 16px;
+}
+
+.options-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
 }
 
 .token-dialog.map-dialog {
@@ -743,7 +769,7 @@
   }
 
   .brand-mark {
-    display: inline-block;
+    display: inline-flex;
     margin-bottom: 6px;
   }
 

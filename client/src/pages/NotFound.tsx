@@ -10,7 +10,7 @@ export default function NotFound() {
       <section className="not-found-box">
         <h1>Page not found</h1>
         <p>The page you requested does not exist.</p>
-        <Link href="/">Back to UK Rail History</Link>
+        <Link href="/">Back to My UK Railway Journeys</Link>
       </section>
     </main>
   );
