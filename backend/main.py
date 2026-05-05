@@ -52,7 +52,10 @@ def sqlite_path_from_env() -> Path:
 
 
 DB_PATH = sqlite_path_from_env()
-JWT_SECRET = os.getenv("JWT_SECRET", "change-me")
+_jwt_secret = os.getenv("JWT_SECRET", "")
+if not _jwt_secret:
+    raise RuntimeError("JWT_SECRET environment variable must be set before starting the server")
+JWT_SECRET: str = _jwt_secret
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30
 
