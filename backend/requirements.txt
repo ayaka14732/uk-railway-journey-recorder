@@ -3,3 +3,5 @@ uvicorn[standard]>=0.30
 requests>=2.32
 pydantic>=2.7
 beautifulsoup4>=4.12
+bcrypt>=4.0
+PyJWT>=2.8
