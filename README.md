@@ -55,7 +55,7 @@ echo "JWT_SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(32))')" >
 Then create your first user:
 
 ```bash
-backend/.venv/bin/python backend/create_user.py
+backend/.venv/bin/python -m backend.create_user
 ```
 
 The script will prompt for a username and password.

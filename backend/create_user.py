@@ -7,7 +7,10 @@ import sys
 
 import bcrypt
 
-from db import get_db_path, init_db, load_local_env
+try:
+    from backend.db import get_db_path, init_db, load_local_env
+except ModuleNotFoundError:
+    from db import get_db_path, init_db, load_local_env
 
 
 def main() -> None:

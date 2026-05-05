@@ -24,7 +24,7 @@ from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from db import get_db_path, init_db, load_local_env
+from backend.db import get_db_path, init_db, load_local_env
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 RTT_WEB = "https://www.realtimetrains.co.uk"
