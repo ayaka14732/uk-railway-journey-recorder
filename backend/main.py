@@ -6,7 +6,6 @@ and stores confirmed journey records in SQLite.
 
 from __future__ import annotations
 
-import csv
 import os
 import re
 import sqlite3
@@ -25,33 +24,14 @@ from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from db import get_db_path, init_db, load_local_env
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 RTT_WEB = "https://www.realtimetrains.co.uk"
 
-
-def load_local_env() -> None:
-    env_file = ROOT_DIR / "backend" / ".env"
-    if not env_file.exists():
-        return
-    for raw_line in env_file.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
-
-
 load_local_env()
 
-
-def sqlite_path_from_env() -> Path:
-    configured = os.getenv("RAIL_HISTORY_SQLITE_PATH")
-    if configured:
-        return Path(configured)
-    return ROOT_DIR / "rail_history.sqlite3"
-
-
-DB_PATH = sqlite_path_from_env()
+DB_PATH = get_db_path()
 _jwt_secret = os.getenv("JWT_SECRET", "")
 if not _jwt_secret:
     raise RuntimeError("JWT_SECRET environment variable must be set before starting the server")
@@ -136,71 +116,9 @@ app.add_middleware(
 )
 
 
-def init_db() -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                username      TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS stations (
-                crs  TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                lat  REAL,
-                long REAL
-            )
-            """
-        )
-        csv_path = ROOT_DIR / "data" / "crs.csv"
-        if csv_path.exists():
-            with open(csv_path, newline="", encoding="utf-8") as f:
-                conn.executemany(
-                    "INSERT OR REPLACE INTO stations (crs, name, lat, long) VALUES (?, ?, ?, ?)",
-                    (
-                        (r["crs"], r["name"], float(r["lat"]) if r.get("lat") else None, float(r["long"]) if r.get("long") else None)
-                        for r in csv.DictReader(f) if r.get("crs")
-                    ),
-                )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS journeys (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER REFERENCES users(id),
-                travel_date TEXT NOT NULL,
-                boarded_crs TEXT NOT NULL,
-                alighted_crs TEXT NOT NULL,
-                departure_date TEXT NOT NULL,
-                operator_name TEXT,
-                service_origin_crs TEXT,
-                service_destination_crs TEXT,
-                planned_departure TEXT,
-                departure_lateness_minutes INTEGER,
-                planned_arrival TEXT,
-                arrival_lateness_minutes INTEGER,
-                platform_departure TEXT,
-                platform_arrival TEXT,
-                direction TEXT,
-                reason TEXT,
-                detailed_reason TEXT,
-                url TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-        conn.commit()
-
-
 @app.on_event("startup")
 def startup() -> None:
-    init_db()
+    init_db(DB_PATH)
 
 
 # ── RTT website scraping ──────────────────────────────────────────────────────

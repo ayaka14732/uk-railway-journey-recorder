@@ -2,31 +2,18 @@
 """Manually create a user. Registration is disabled in the API."""
 
 import getpass
-import os
 import sqlite3
 import sys
-from pathlib import Path
 
 import bcrypt
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-
-
-def load_local_env() -> None:
-    env_file = ROOT_DIR / "backend" / ".env"
-    if not env_file.exists():
-        return
-    for raw_line in env_file.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+from db import get_db_path, init_db, load_local_env
 
 
 def main() -> None:
     load_local_env()
-    db_path = Path(os.getenv("RAIL_HISTORY_SQLITE_PATH", "") or ROOT_DIR / "rail_history.sqlite3")
+    db_path = get_db_path()
+    init_db(db_path)
 
     username = input("Username: ").strip()
     if not username:
@@ -41,44 +28,6 @@ def main() -> None:
     password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
     with sqlite3.connect(db_path) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                username      TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS journeys (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER REFERENCES users(id),
-                travel_date TEXT NOT NULL,
-                boarded_crs TEXT NOT NULL,
-                alighted_crs TEXT NOT NULL,
-                departure_date TEXT,
-                operator_name TEXT,
-                service_origin_crs TEXT,
-                service_destination_crs TEXT,
-                planned_departure TEXT,
-                departure_lateness_minutes INTEGER,
-                planned_arrival TEXT,
-                arrival_lateness_minutes INTEGER,
-                platform_departure TEXT,
-                platform_arrival TEXT,
-                direction TEXT,
-                reason TEXT,
-                detailed_reason TEXT,
-                url TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-        conn.commit()
-
         try:
             conn.execute(
                 "INSERT INTO users (username, password_hash) VALUES (?, ?)",
