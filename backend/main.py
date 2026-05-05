@@ -94,12 +94,7 @@ def init_db() -> None:
             )
             """
         )
-        existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(stations)").fetchall()}
-        if "lat" not in existing_cols:
-            conn.execute("ALTER TABLE stations ADD COLUMN lat REAL")
-        if "long" not in existing_cols:
-            conn.execute("ALTER TABLE stations ADD COLUMN long REAL")
-        csv_path = ROOT_DIR / "crs.csv"
+        csv_path = ROOT_DIR / "data" / "crs.csv"
         if csv_path.exists():
             with open(csv_path, newline="", encoding="utf-8") as f:
                 conn.executemany(
