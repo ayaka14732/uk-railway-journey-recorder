@@ -41,6 +41,44 @@ def main() -> None:
     password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
     with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                username      TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS journeys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER REFERENCES users(id),
+                travel_date TEXT NOT NULL,
+                boarded_crs TEXT NOT NULL,
+                alighted_crs TEXT NOT NULL,
+                departure_date TEXT,
+                operator_name TEXT,
+                service_origin_crs TEXT,
+                service_destination_crs TEXT,
+                planned_departure TEXT,
+                departure_lateness_minutes INTEGER,
+                planned_arrival TEXT,
+                arrival_lateness_minutes INTEGER,
+                platform_departure TEXT,
+                platform_arrival TEXT,
+                direction TEXT,
+                reason TEXT,
+                detailed_reason TEXT,
+                url TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.commit()
+
         try:
             conn.execute(
                 "INSERT INTO users (username, password_hash) VALUES (?, ?)",
