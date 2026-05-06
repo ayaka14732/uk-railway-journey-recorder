@@ -26,10 +26,15 @@ export default function Home() {
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--sbb-red)", marginBottom: 12 }}>
           UK Railway Journey Recorder
         </h1>
-        <p style={{ color: "var(--sbb-ink)", lineHeight: 1.7 }}>
+        <p style={{ color: "var(--sbb-ink)", lineHeight: 1.5 }}>
           Record and revisit your train journeys across Great Britain. Log where you travelled,
           when you arrived, and why. Then explore your history through stats, maps, and a
           searchable journey table.
+        </p>
+        <p style={{ marginTop: 12, color: "var(--sbb-ink)", lineHeight: 1.5 }}>
+          <a href="https://github.com/ayaka14732/uk-railway-journey-recorder" target="_blank" rel="noreferrer" style={{ color: "var(--sbb-red)" }}>
+            View on GitHub
+          </a>
         </p>
       </section>
     </main>
