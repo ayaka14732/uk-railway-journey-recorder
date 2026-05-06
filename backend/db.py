@@ -32,6 +32,7 @@ def get_db_path() -> Path:
 def init_db(db_path: Path) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db_path) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -88,4 +89,6 @@ def init_db(db_path: Path) -> None:
             )
             """
         )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_journeys_user_id ON journeys(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_journeys_user_travel ON journeys(user_id, travel_date DESC)")
         conn.commit()
