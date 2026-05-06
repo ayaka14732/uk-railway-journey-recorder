@@ -554,7 +554,7 @@ export default function UserPage() {
       }
     }
     return () => { map.remove(); };
-  }, [showMap]);
+  }, [showMap, history, stations]);
 
   const showPersonalCols = canEdit && !hidePersonalCols;
   const historyCols = 12 + (showPersonalCols ? 3 : 0) + (canEdit ? 1 : 0);

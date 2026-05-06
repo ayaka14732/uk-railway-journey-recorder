@@ -39,15 +39,16 @@ JWT_SECRET: str = _jwt_secret
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30
 
-_http_bearer = HTTPBearer()
 _http_bearer_optional = HTTPBearer(auto_error=False)
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_http_bearer),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_http_bearer_optional),
 ) -> int:
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Authorization required")
     try:
         payload = pyjwt.decode(
             credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
