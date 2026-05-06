@@ -53,7 +53,7 @@ def init_db(db_path: Path) -> None:
             )
             """
         )
-        csv_path = ROOT_DIR / "data" / "crs.csv"
+        csv_path = ROOT_DIR / "backend" / "data" / "crs.csv"
         if csv_path.exists():
             with open(csv_path, newline="", encoding="utf-8") as f:
                 conn.executemany(
