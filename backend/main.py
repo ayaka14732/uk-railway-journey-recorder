@@ -50,7 +50,8 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Authorization required")
     try:
         payload = pyjwt.decode(
-            credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
+            credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM],
+            options={"require": ["exp", "sub"]},
         )
         return int(payload["sub"])
     except (pyjwt.InvalidTokenError, KeyError, ValueError):
@@ -64,7 +65,8 @@ def get_optional_user(
         return None
     try:
         payload = pyjwt.decode(
-            credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
+            credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM],
+            options={"require": ["exp", "sub"]},
         )
         return int(payload["sub"])
     except (pyjwt.InvalidTokenError, KeyError, ValueError):
