@@ -590,7 +590,7 @@ export default function UserPage() {
         )}
       </header>
 
-      {canEdit && showTokenDialog && (
+      {token && showTokenDialog && (
         <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTokenDialog(false); }}>
           <div className="token-dialog">
             <div className="token-dialog-header">
@@ -834,7 +834,7 @@ export default function UserPage() {
               <span>Service</span><span>Svc from</span><span>Svc to</span><span>Operator</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span>Action</span>
             </div>
             {candidates.length === 0 ? (
-              <div className="empty-row">No search results yet.</div>
+              <div className="empty-row">No matching services found.</div>
             ) : candidates.map((candidate) => {
               const key = `${candidate.identity}-${candidate.departureDate}`;
               const saved = savedKeys.has(key);
