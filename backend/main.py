@@ -353,7 +353,7 @@ def login(body: LoginRequest) -> dict[str, Any]:
 
 @app.get("/api/stations-local")
 def stations_local() -> dict[str, Any]:
-    init_db()
+    init_db(DB_PATH)
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute("SELECT crs, name, lat, long FROM stations ORDER BY name").fetchall()
@@ -442,7 +442,7 @@ def update_journey(
     body: UpdateJourneyRequest,
     user_id: int = Depends(get_current_user),
 ) -> dict[str, Any]:
-    init_db()
+    init_db(DB_PATH)
     with sqlite3.connect(DB_PATH) as conn:
         result = conn.execute(
             "UPDATE journeys SET direction = ?, reason = ?, detailed_reason = ? WHERE id = ? AND user_id = ?",
@@ -459,7 +459,7 @@ def delete_journey(
     journey_id: int,
     user_id: int = Depends(get_current_user),
 ) -> dict[str, Any]:
-    init_db()
+    init_db(DB_PATH)
     with sqlite3.connect(DB_PATH) as conn:
         result = conn.execute(
             "DELETE FROM journeys WHERE id = ? AND user_id = ?", (journey_id, user_id)
@@ -475,7 +475,7 @@ def list_journeys(
     username: Optional[str] = Query(default=None),
     requesting_user_id: Optional[int] = Depends(get_optional_user),
 ) -> dict[str, Any]:
-    init_db()
+    init_db(DB_PATH)
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         if username:
