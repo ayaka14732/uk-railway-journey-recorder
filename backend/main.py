@@ -7,7 +7,6 @@ and stores confirmed journey records in SQLite.
 from __future__ import annotations
 
 import os
-import re
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
@@ -343,7 +342,11 @@ def login(body: LoginRequest) -> dict[str, Any]:
         row = conn.execute(
             "SELECT id, password_hash FROM users WHERE username = ?", (body.username,)
         ).fetchone()
-    if not row or not bcrypt.checkpw(body.password.encode(), row["password_hash"].encode()):
+    try:
+        password_ok = row and bcrypt.checkpw(body.password.encode(), row["password_hash"].encode())
+    except ValueError:
+        password_ok = False
+    if not password_ok:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     expire = datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRE_DAYS)
     token = pyjwt.encode(

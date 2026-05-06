@@ -34,7 +34,7 @@ export default function LoginPage() {
       const data = await apiPost<{ token: string }>("/api/auth/login", { username, password });
       localStorage.setItem("auth_token", data.token);
       localStorage.setItem("auth_user", username);
-      setLocation(`/${username}/`);
+      setLocation(`/u/${username}/`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

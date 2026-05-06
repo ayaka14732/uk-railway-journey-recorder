@@ -72,7 +72,7 @@ pnpm api
 pnpm dev
 ```
 
-Open http://localhost:3000 in your browser. Sign in with the credentials you created above, then paste your RTT cookie into the **Cookie** field (inside the Options dialog) when querying services older than 14 days.
+Open http://localhost:3000 in your browser. Sign in with the credentials you created above — your journey page will be at `http://localhost:3000/u/<username>/`. Paste your RTT cookie into the **Cookie** field (inside the Options dialog) when querying services older than 14 days.
 
 ### Environment variables
 
