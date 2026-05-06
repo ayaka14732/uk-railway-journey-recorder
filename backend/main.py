@@ -6,49 +6,78 @@ and stores confirmed journey records in SQLite.
 
 from __future__ import annotations
 
-import csv
 import os
-import re
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+import bcrypt
+import jwt as pyjwt
 import requests
 from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from backend.db import get_db_path, init_db, load_local_env
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 RTT_WEB = "https://www.realtimetrains.co.uk"
 
-
-def load_local_env() -> None:
-    env_file = ROOT_DIR / "backend" / ".env"
-    if not env_file.exists():
-        return
-    for raw_line in env_file.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
-
-
 load_local_env()
 
+DB_PATH = get_db_path()
+_jwt_secret = os.getenv("JWT_SECRET", "")
+if not _jwt_secret:
+    raise RuntimeError("JWT_SECRET environment variable must be set before starting the server")
+JWT_SECRET: str = _jwt_secret
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_DAYS = 30
 
-def sqlite_path_from_env() -> Path:
-    configured = os.getenv("RAIL_HISTORY_SQLITE_PATH")
-    if configured:
-        return Path(configured)
-    return ROOT_DIR / "rail_history.sqlite3"
+_http_bearer_optional = HTTPBearer(auto_error=False)
 
 
-DB_PATH = sqlite_path_from_env()
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_http_bearer_optional),
+) -> int:
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Authorization required")
+    try:
+        payload = pyjwt.decode(
+            credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM],
+            options={"require": ["exp", "sub"]},
+        )
+        return int(payload["sub"])
+    except (pyjwt.InvalidTokenError, KeyError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_http_bearer_optional),
+) -> Optional[int]:
+    if not credentials:
+        return None
+    try:
+        payload = pyjwt.decode(
+            credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM],
+            options={"require": ["exp", "sub"]},
+        )
+        return int(payload["sub"])
+    except (pyjwt.InvalidTokenError, KeyError, ValueError):
+        return None
+
+
+# ── Request models ────────────────────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., pattern=r"^[A-Za-z][A-Za-z0-9]+$")
+    password: str
 
 
 class SearchRequest(BaseModel):
@@ -71,7 +100,15 @@ class ResolveRequest(BaseModel):
     detailedReason: Optional[str] = None
 
 
-app = FastAPI(title="UK Rail History API", version="0.2.0")
+class UpdateJourneyRequest(BaseModel):
+    direction: Optional[str] = None
+    reason: Optional[str] = None
+    detailed_reason: Optional[str] = None
+
+
+# ── App ───────────────────────────────────────────────────────────────────────
+
+app = FastAPI(title="UK Rail History API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -81,60 +118,9 @@ app.add_middleware(
 )
 
 
-def init_db() -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS stations (
-                crs  TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                lat  REAL,
-                long REAL
-            )
-            """
-        )
-        csv_path = ROOT_DIR / "data" / "crs.csv"
-        if csv_path.exists():
-            with open(csv_path, newline="", encoding="utf-8") as f:
-                conn.executemany(
-                    "INSERT OR REPLACE INTO stations (crs, name, lat, long) VALUES (?, ?, ?, ?)",
-                    (
-                        (r["crs"], r["name"], float(r["lat"]) if r.get("lat") else None, float(r["long"]) if r.get("long") else None)
-                        for r in csv.DictReader(f) if r.get("crs")
-                    ),
-                )
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS journeys (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                travel_date TEXT NOT NULL,
-                boarded_crs TEXT NOT NULL,
-                alighted_crs TEXT NOT NULL,
-                departure_date TEXT NOT NULL,
-                operator_name TEXT,
-                service_origin_crs TEXT,
-                service_destination_crs TEXT,
-                planned_departure TEXT,
-                departure_lateness_minutes INTEGER,
-                planned_arrival TEXT,
-                arrival_lateness_minutes INTEGER,
-                platform_departure TEXT,
-                platform_arrival TEXT,
-                direction TEXT,
-                reason TEXT,
-                detailed_reason TEXT,
-                url TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-        conn.commit()
-
-
 @app.on_event("startup")
 def startup() -> None:
-    init_db()
+    init_db(DB_PATH)
 
 
 # ── RTT website scraping ──────────────────────────────────────────────────────
@@ -308,11 +294,13 @@ def save_journey(
     direction: Optional[str],
     reason: Optional[str],
     detailed_reason: Optional[str],
+    user_id: int,
 ) -> int:
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute(
             """
             INSERT INTO journeys (
+                user_id,
                 travel_date, boarded_crs, alighted_crs, departure_date,
                 operator_name,
                 service_origin_crs, service_destination_crs,
@@ -320,9 +308,10 @@ def save_journey(
                 planned_arrival,   arrival_lateness_minutes,
                 platform_departure, platform_arrival,
                 direction, reason, detailed_reason, url
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                user_id,
                 detail.get("travelDate"),
                 detail["boarded"]["crs"],
                 detail["alighted"]["crs"],
@@ -348,9 +337,28 @@ def save_journey(
 
 # ── API endpoints ─────────────────────────────────────────────────────────────
 
+@app.post("/api/auth/login")
+def login(body: LoginRequest) -> dict[str, Any]:
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT id, password_hash FROM users WHERE username = ?", (body.username,)
+        ).fetchone()
+    try:
+        password_ok = row and bcrypt.checkpw(body.password.encode(), row["password_hash"].encode())
+    except ValueError:
+        password_ok = False
+    if not password_ok:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    expire = datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRE_DAYS)
+    token = pyjwt.encode(
+        {"sub": str(row["id"]), "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM
+    )
+    return {"token": token}
+
+
 @app.get("/api/stations-local")
 def stations_local() -> dict[str, Any]:
-    init_db()
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute("SELECT crs, name, lat, long FROM stations ORDER BY name").fetchall()
@@ -358,7 +366,11 @@ def stations_local() -> dict[str, Any]:
 
 
 @app.post("/api/search-services")
-def search_services(request: SearchRequest, cookie: str = Depends(get_rtt_cookie)) -> dict[str, Any]:
+def search_services(
+    request: SearchRequest,
+    _: int = Depends(get_current_user),
+    cookie: str = Depends(get_rtt_cookie),
+) -> dict[str, Any]:
     time4 = request.time.replace(":", "")
     search_url = (
         f"{RTT_WEB}/search/simple"
@@ -409,7 +421,11 @@ def search_services(request: SearchRequest, cookie: str = Depends(get_rtt_cookie
 
 
 @app.post("/api/resolve-service")
-def resolve_service(request: ResolveRequest, cookie: str = Depends(get_rtt_cookie)) -> dict[str, Any]:
+def resolve_service(
+    request: ResolveRequest,
+    user_id: int = Depends(get_current_user),
+    cookie: str = Depends(get_rtt_cookie),
+) -> dict[str, Any]:
     detail = scrape_service_page(
         request.identity,
         request.departureDate,
@@ -421,23 +437,20 @@ def resolve_service(request: ResolveRequest, cookie: str = Depends(get_rtt_cooki
 
     saved_id: int | None = None
     if request.save:
-        saved_id = save_journey(detail, request.direction, request.reason, request.detailedReason)
+        saved_id = save_journey(detail, request.direction, request.reason, request.detailedReason, user_id)
     return {"journeyId": saved_id, "detail": detail}
 
 
-class UpdateJourneyRequest(BaseModel):
-    direction: Optional[str] = None
-    reason: Optional[str] = None
-    detailed_reason: Optional[str] = None
-
-
 @app.patch("/api/journeys/{journey_id}")
-def update_journey(journey_id: int, body: UpdateJourneyRequest) -> dict[str, Any]:
-    init_db()
+def update_journey(
+    journey_id: int,
+    body: UpdateJourneyRequest,
+    user_id: int = Depends(get_current_user),
+) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
         result = conn.execute(
-            "UPDATE journeys SET direction = ?, reason = ?, detailed_reason = ? WHERE id = ?",
-            (body.direction, body.reason, body.detailed_reason, journey_id),
+            "UPDATE journeys SET direction = ?, reason = ?, detailed_reason = ? WHERE id = ? AND user_id = ?",
+            (body.direction, body.reason, body.detailed_reason, journey_id, user_id),
         )
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Journey not found")
@@ -446,32 +459,50 @@ def update_journey(journey_id: int, body: UpdateJourneyRequest) -> dict[str, Any
 
 
 @app.delete("/api/journeys/{journey_id}")
-def delete_journey(journey_id: int) -> dict[str, Any]:
-    init_db()
+def delete_journey(
+    journey_id: int,
+    user_id: int = Depends(get_current_user),
+) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
-        result = conn.execute("DELETE FROM journeys WHERE id = ?", (journey_id,))
+        result = conn.execute(
+            "DELETE FROM journeys WHERE id = ? AND user_id = ?", (journey_id, user_id)
+        )
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Journey not found")
     return {"deleted": journey_id}
 
 
 @app.get("/api/journeys")
-def list_journeys(limit: int = Query(default=20, ge=1, le=800)) -> dict[str, Any]:
-    init_db()
+def list_journeys(
+    limit: int = Query(default=20, ge=1, le=800),
+    username: str = Query(..., pattern=r"^[A-Za-z][A-Za-z0-9]+$"),
+    requesting_user_id: Optional[int] = Depends(get_optional_user),
+) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
+        user = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+        is_owner = requesting_user_id is not None and requesting_user_id == user["id"]
         rows = conn.execute(
             """
-            SELECT id, travel_date, boarded_crs, alighted_crs,
-                   departure_date, operator_name,
-                   service_origin_crs, service_destination_crs, planned_departure,
-                   departure_lateness_minutes, planned_arrival,
-                   arrival_lateness_minutes, platform_departure,
-                   platform_arrival, direction, reason, detailed_reason, url, created_at
-            FROM journeys
-            ORDER BY travel_date DESC, id DESC
+            SELECT j.id, j.travel_date, j.boarded_crs, j.alighted_crs,
+                   j.departure_date, j.operator_name,
+                   j.service_origin_crs, j.service_destination_crs, j.planned_departure,
+                   j.departure_lateness_minutes, j.planned_arrival,
+                   j.arrival_lateness_minutes, j.platform_departure,
+                   j.platform_arrival, j.direction, j.reason, j.detailed_reason, j.url, j.created_at
+            FROM journeys j
+            JOIN users u ON j.user_id = u.id
+            WHERE u.username = ?
+            ORDER BY j.travel_date DESC, j.id DESC
             LIMIT ?
             """,
-            (limit,),
+            (username, limit),
         ).fetchall()
-    return {"journeys": [dict(row) for row in rows]}
+    personal = {"direction", "reason", "detailed_reason"}
+    journeys = [
+        {k: v for k, v in dict(row).items() if is_owner or k not in personal}
+        for row in rows
+    ]
+    return {"journeys": journeys}

@@ -727,40 +727,6 @@
   line-height: 1.4;
 }
 
-.not-found-page {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: var(--sbb-paper);
-}
-
-.not-found-box {
-  width: min(520px, 100%);
-  border: 1px solid var(--sbb-line);
-  border-top: 4px solid var(--sbb-red);
-  background: #ffffff;
-  padding: 18px;
-}
-
-.not-found-box h1 {
-  margin: 0 0 8px;
-  font-size: 22px;
-}
-
-.not-found-box p {
-  margin: 0 0 14px;
-  color: #555555;
-}
-
-.not-found-box a {
-  display: inline-block;
-  padding: 6px 10px;
-  background: var(--sbb-red);
-  color: #ffffff;
-  text-decoration: none;
-  font-weight: 700;
-}
 
 @media (max-width: 900px) {
   .plain-header,

@@ -16,7 +16,7 @@ This project is inspired by the way [myFlightradar24](https://my.flightradar24.c
 
 RTT does offer an API, but even for paid subscribers it only covers the last 14 days — not the full 5-year history. This app therefore uses **web scraping**: the backend fetches RTT pages directly and parses the HTML with BeautifulSoup4.
 
-Because RTT requires a logged-in session to view data older than 14 days, **you must paste your RTT cookie into the Cookie field at the top of the page** when querying services from more than 14 days ago. The backend attaches that cookie to its requests.
+Because RTT requires a logged-in session to view data older than 14 days, **you must paste your RTT cookie into the Cookie field inside the Options dialog** when querying services from more than 14 days ago. The backend attaches that cookie to its requests.
 
 ### Database
 
@@ -46,6 +46,20 @@ python3 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt
 ```
 
+Create `backend/.env` with a strong random secret:
+
+```bash
+echo "JWT_SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(32))')" > backend/.env
+```
+
+Then create your first user:
+
+```bash
+backend/.venv/bin/python -m backend.create_user
+```
+
+The script will prompt for a username and password.
+
 ### Starting the dev environment
 
 You need two terminals running simultaneously:
@@ -58,12 +72,13 @@ pnpm api
 pnpm dev
 ```
 
-Open http://localhost:3000 in your browser. Paste your RTT cookie into the **Cookie** field at the top of the page to get started.
+Open http://localhost:3000 in your browser. Sign in with the credentials you created above — your journey page will be at `http://localhost:3000/u/<username>/`. Paste your RTT cookie into the **Cookie** field (inside the Options dialog) when querying services older than 14 days.
 
 ### Environment variables
 
-| Variable                   | Required | Description                                                              |
-|----------------------------|----------|--------------------------------------------------------------------------|
+| Variable                   | Required | Description                                                                     |
+|----------------------------|----------|---------------------------------------------------------------------------------|
+| `JWT_SECRET`               | Yes      | Secret key used to sign JWTs; the server refuses to start if this is not set    |
 | `RAIL_HISTORY_SQLITE_PATH` | No       | Path to the SQLite file; defaults to `rail_history.sqlite3` in the project root |
 
 ## Miscellaneous

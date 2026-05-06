@@ -1,16 +1,18 @@
-/*
- * Design reminder: Plain SBB-inspired utility interface.
- * Keep this fallback page English-only, simple, red/black/white, and without animation or decorative effects.
- */
-import { Link } from "wouter";
-
 export default function NotFound() {
   return (
-    <main className="not-found-page">
-      <section className="not-found-box">
-        <h1>Page not found</h1>
-        <p>The page you requested does not exist.</p>
-        <Link href="/">Back to My UK Railway Journeys</Link>
+    <main className="plain-shell">
+      <header className="plain-header">
+        <div className="brand-mark">
+          <img src="/national-rail.svg" alt="National Rail" />
+          UK Railway Journey Recorder
+        </div>
+      </header>
+      <section className="search-panel" style={{ maxWidth: 480, margin: "64px auto" }}>
+        <div className="section-title"><h2>404 — Page not found</h2></div>
+        <p style={{ padding: "10px 8px", fontSize: 13, color: "#555" }}>
+          The page you requested does not exist.{" "}
+          <a href="/" style={{ color: "var(--sbb-red)", fontWeight: 700 }}>Go home</a>
+        </p>
       </section>
     </main>
   );
