@@ -473,49 +473,32 @@ def delete_journey(
 @app.get("/api/journeys")
 def list_journeys(
     limit: int = Query(default=20, ge=1, le=800),
-    username: Optional[str] = Query(default=None),
+    username: str = Query(...),
     requesting_user_id: Optional[int] = Depends(get_optional_user),
 ) -> dict[str, Any]:
     init_db(DB_PATH)
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
-        if username:
-            user = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
-            if not user:
-                raise HTTPException(status_code=404, detail=f"User '{username}' not found")
-            is_owner = requesting_user_id is not None and requesting_user_id == user["id"]
-            rows = conn.execute(
-                """
-                SELECT j.id, j.travel_date, j.boarded_crs, j.alighted_crs,
-                       j.departure_date, j.operator_name,
-                       j.service_origin_crs, j.service_destination_crs, j.planned_departure,
-                       j.departure_lateness_minutes, j.planned_arrival,
-                       j.arrival_lateness_minutes, j.platform_departure,
-                       j.platform_arrival, j.direction, j.reason, j.detailed_reason, j.url, j.created_at
-                FROM journeys j
-                JOIN users u ON j.user_id = u.id
-                WHERE u.username = ?
-                ORDER BY j.travel_date DESC, j.id DESC
-                LIMIT ?
-                """,
-                (username, limit),
-            ).fetchall()
-        else:
-            is_owner = False
-            rows = conn.execute(
-                """
-                SELECT id, travel_date, boarded_crs, alighted_crs,
-                       departure_date, operator_name,
-                       service_origin_crs, service_destination_crs, planned_departure,
-                       departure_lateness_minutes, planned_arrival,
-                       arrival_lateness_minutes, platform_departure,
-                       platform_arrival, direction, reason, detailed_reason, url, created_at
-                FROM journeys
-                ORDER BY travel_date DESC, id DESC
-                LIMIT ?
-                """,
-                (limit,),
-            ).fetchall()
+        user = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+        is_owner = requesting_user_id is not None and requesting_user_id == user["id"]
+        rows = conn.execute(
+            """
+            SELECT j.id, j.travel_date, j.boarded_crs, j.alighted_crs,
+                   j.departure_date, j.operator_name,
+                   j.service_origin_crs, j.service_destination_crs, j.planned_departure,
+                   j.departure_lateness_minutes, j.planned_arrival,
+                   j.arrival_lateness_minutes, j.platform_departure,
+                   j.platform_arrival, j.direction, j.reason, j.detailed_reason, j.url, j.created_at
+            FROM journeys j
+            JOIN users u ON j.user_id = u.id
+            WHERE u.username = ?
+            ORDER BY j.travel_date DESC, j.id DESC
+            LIMIT ?
+            """,
+            (username, limit),
+        ).fetchall()
     personal = {"direction", "reason", "detailed_reason"}
     journeys = [
         {k: v for k, v in dict(row).items() if is_owner or k not in personal}

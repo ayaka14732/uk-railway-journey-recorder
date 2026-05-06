@@ -283,8 +283,12 @@ export default function UserPage() {
   }
 
   const [rttCookie, setRttCookie] = useState<string>(() => localStorage.getItem("rtt_cookie") ?? "");
-  const [showTokenDialog, setShowTokenDialog] = useState(() => canEdit && !localStorage.getItem("rtt_cookie"));
+  const [showTokenDialog, setShowTokenDialog] = useState(false);
   const [draftCookie, setDraftCookie] = useState<string>(() => localStorage.getItem("rtt_cookie") ?? "");
+
+  useEffect(() => {
+    if (canEdit && !localStorage.getItem("rtt_cookie")) setShowTokenDialog(true);
+  }, [canEdit]);
 
   function saveCookie() {
     const c = draftCookie.trim();
@@ -532,22 +536,23 @@ export default function UserPage() {
       if (count < 10) return "#e07000";
       return "#e0001b";
     }
+    const stationMap = new Map(stations.map((s) => [s.crs, s]));
     const drawnRoutes = new Set<string>();
     const drawnStations = new Set<string>();
     for (const j of history) {
       const key = [j.boarded_crs, j.alighted_crs].sort().join("|");
-      const from = stations.find((s) => s.crs === j.boarded_crs);
-      const to = stations.find((s) => s.crs === j.alighted_crs);
-      if (!from?.lat || !to?.lat) continue;
+      const from = stationMap.get(j.boarded_crs);
+      const to = stationMap.get(j.alighted_crs);
+      if (!from?.lat || !from?.long || !to?.lat || !to?.long) continue;
       if (!drawnRoutes.has(key)) {
         const count = routeCounts.get(key) ?? 1;
-        L.polyline([[from.lat, from.long!], [to.lat, to.long!]], { color: routeColor(count), weight: 3, opacity: 0.85 })
+        L.polyline([[from.lat, from.long], [to.lat, to.long]], { color: routeColor(count), weight: 3, opacity: 0.85 })
           .addTo(map).bindPopup(`${from.name} ↔ ${to.name} (${count}×)`);
         drawnRoutes.add(key);
       }
       for (const st of [from, to]) {
-        if (!drawnStations.has(st.crs)) {
-          L.circleMarker([st.lat!, st.long!], { radius: 3, color: "#333333", fillColor: "#333333", fillOpacity: 1, weight: 0 })
+        if (!drawnStations.has(st.crs) && st.lat && st.long) {
+          L.circleMarker([st.lat, st.long], { radius: 3, color: "#333333", fillColor: "#333333", fillOpacity: 1, weight: 0 })
             .addTo(map).bindPopup(st.name);
           drawnStations.add(st.crs);
         }
