@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { publicAsset } from "@/lib/assets";
 
 function logout() {
   localStorage.removeItem("auth_token");
@@ -13,7 +14,7 @@ export default function Home() {
     <main className="plain-shell">
       <header className="plain-header">
         <div className="brand-mark">
-          <img src="/national-rail.svg" alt="National Rail" />
+          <img src={publicAsset("national-rail.svg")} alt="National Rail" />
           UK Railway Journey Recorder
         </div>
         {token ? (

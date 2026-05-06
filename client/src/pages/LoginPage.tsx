@@ -1,20 +1,8 @@
 import { FormEvent, useState } from "react";
 import { useLocation } from "wouter";
+import { apiJson } from "@/lib/api";
+import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
-
-async function apiPost<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = typeof data.detail === "string" ? data.detail : response.statusText;
-    throw new Error(detail);
-  }
-  return data as T;
-}
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -32,7 +20,10 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await apiPost<{ token: string }>("/api/auth/login", { username, password });
+      const data = await apiJson<{ token: string }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
       localStorage.setItem("auth_token", data.token);
       localStorage.setItem("auth_user", username);
       setLocation(`/u/${username}/`);
@@ -47,7 +38,7 @@ export default function LoginPage() {
     <main className="plain-shell">
       <header className="plain-header">
         <div className="brand-mark">
-          <img src="/national-rail.svg" alt="National Rail" />
+          <img src={publicAsset("national-rail.svg")} alt="National Rail" />
           UK Railway Journey Recorder
         </div>
       </header>

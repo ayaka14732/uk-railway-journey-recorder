@@ -5,6 +5,8 @@
  */
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
+import { ApiError, apiJson } from "@/lib/api";
+import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
 import NotFound from "./NotFound";
 import L from "leaflet";
@@ -157,24 +159,6 @@ function OperatorBadge({ name }: { name: string }) {
       {canonical}
     </span>
   );
-}
-
-class ApiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
-}
-
-async function apiJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const { headers: extra, ...rest } = options ?? {};
-  const response = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(extra as Record<string, string> | undefined) },
-    ...rest,
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = typeof body.detail === "string" ? body.detail : body.detail?.message || response.statusText;
-    throw new ApiError(response.status, detail);
-  }
-  return body as T;
 }
 
 function StationInput({
@@ -575,7 +559,7 @@ export default function UserPage() {
     <main className="plain-shell">
       <header className="plain-header">
         <div className="brand-mark">
-          <img src="/national-rail.svg" alt="National Rail" />
+          <img src={publicAsset("national-rail.svg")} alt="National Rail" />
           {username}'s UK Railway Journeys
         </div>
         <div className="header-actions">
