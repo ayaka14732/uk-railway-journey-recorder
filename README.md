@@ -16,7 +16,7 @@ This project is inspired by the way [myFlightradar24](https://my.flightradar24.c
 
 RTT does offer an API, but even for paid subscribers it only covers the last 14 days — not the full 5-year history. This app therefore uses **web scraping**: the backend fetches RTT pages directly and parses the HTML with BeautifulSoup4.
 
-Because RTT requires a logged-in session to view data older than 14 days, **you must paste your RTT cookie into the Cookie field at the top of the page** when querying services from more than 14 days ago. The backend attaches that cookie to its requests.
+Because RTT requires a logged-in session to view data older than 14 days, **you must paste your RTT cookie into the Cookie field inside the Options dialog** when querying services from more than 14 days ago. The backend attaches that cookie to its requests.
 
 ### Database
 

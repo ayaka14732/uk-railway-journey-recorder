@@ -536,14 +536,14 @@ export default function UserPage() {
       if (count < 10) return "#e07000";
       return "#e0001b";
     }
-    const stationMap = new Map(stations.map((s) => [s.crs, s]));
+    const stationByCrs = new Map(stations.map((s) => [s.crs, s]));
     const drawnRoutes = new Set<string>();
     const drawnStations = new Set<string>();
     for (const j of history) {
       const key = [j.boarded_crs, j.alighted_crs].sort().join("|");
-      const from = stationMap.get(j.boarded_crs);
-      const to = stationMap.get(j.alighted_crs);
-      if (!from?.lat || !from?.long || !to?.lat || !to?.long) continue;
+      const from = stationByCrs.get(j.boarded_crs);
+      const to = stationByCrs.get(j.alighted_crs);
+      if (from?.lat == null || from?.long == null || to?.lat == null || to?.long == null) continue;
       if (!drawnRoutes.has(key)) {
         const count = routeCounts.get(key) ?? 1;
         L.polyline([[from.lat, from.long], [to.lat, to.long]], { color: routeColor(count), weight: 3, opacity: 0.85 })
@@ -551,7 +551,7 @@ export default function UserPage() {
         drawnRoutes.add(key);
       }
       for (const st of [from, to]) {
-        if (!drawnStations.has(st.crs) && st.lat && st.long) {
+        if (!drawnStations.has(st.crs) && st.lat != null && st.long != null) {
           L.circleMarker([st.lat, st.long], { radius: 3, color: "#333333", fillColor: "#333333", fillOpacity: 1, weight: 0 })
             .addTo(map).bindPopup(st.name);
           drawnStations.add(st.crs);
