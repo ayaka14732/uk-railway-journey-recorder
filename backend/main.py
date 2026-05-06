@@ -75,7 +75,7 @@ def get_optional_user(
 # ── Request models ────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
-    username: str
+    username: str = Field(..., pattern=r"^[A-Za-z][A-Za-z0-9]+$")
     password: str
 
 
@@ -473,7 +473,7 @@ def delete_journey(
 @app.get("/api/journeys")
 def list_journeys(
     limit: int = Query(default=20, ge=1, le=800),
-    username: str = Query(...),
+    username: str = Query(..., pattern=r"^[A-Za-z][A-Za-z0-9]+$"),
     requesting_user_id: Optional[int] = Depends(get_optional_user),
 ) -> dict[str, Any]:
     init_db(DB_PATH)

@@ -410,6 +410,8 @@ export default function UserPage() {
   }
 
   async function loadHistory() {
+    setNotFound(false);
+    setMessage("");
     try {
       const data = await apiJson<{ journeys: StoredJourney[] }>(`/api/journeys?username=${encodeURIComponent(username)}&limit=800`, { headers: authHeaders() });
       setHistory(data.journeys);

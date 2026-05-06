@@ -2,6 +2,7 @@
 """Manually create a user. Registration is disabled in the API."""
 
 import getpass
+import re
 import sqlite3
 import sys
 
@@ -19,8 +20,8 @@ def main() -> None:
     init_db(db_path)
 
     username = input("Username: ").strip()
-    if not username:
-        print("Username cannot be empty.")
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9]+", username):
+        print("Username must start with a letter and contain only letters and digits.")
         sys.exit(1)
 
     password = getpass.getpass("Password: ")

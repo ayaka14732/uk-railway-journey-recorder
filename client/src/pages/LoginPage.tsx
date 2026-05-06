@@ -24,6 +24,10 @@ export default function LoginPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!/^[A-Za-z][A-Za-z0-9]+$/.test(username)) {
+      setError("Username must start with a letter and contain only letters and digits.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
