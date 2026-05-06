@@ -367,8 +367,8 @@ def stations_local() -> dict[str, Any]:
 @app.post("/api/search-services")
 def search_services(
     request: SearchRequest,
-    cookie: str = Depends(get_rtt_cookie),
     _: int = Depends(get_current_user),
+    cookie: str = Depends(get_rtt_cookie),
 ) -> dict[str, Any]:
     time4 = request.time.replace(":", "")
     search_url = (
@@ -422,8 +422,8 @@ def search_services(
 @app.post("/api/resolve-service")
 def resolve_service(
     request: ResolveRequest,
-    cookie: str = Depends(get_rtt_cookie),
     user_id: int = Depends(get_current_user),
+    cookie: str = Depends(get_rtt_cookie),
 ) -> dict[str, Any]:
     detail = scrape_service_page(
         request.identity,
