@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useLocation } from "wouter";
+import { isValidUsername } from "@/lib/username";
 
 async function apiPost<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(url, {
@@ -24,7 +25,7 @@ export default function LoginPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!/^[A-Za-z][A-Za-z0-9]+$/.test(username)) {
+    if (!isValidUsername(username)) {
       setError("Username must start with a letter and contain only letters and digits.");
       return;
     }

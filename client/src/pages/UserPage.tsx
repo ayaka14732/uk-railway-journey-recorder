@@ -5,6 +5,7 @@
  */
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
+import { isValidUsername } from "@/lib/username";
 import NotFound from "./NotFound";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -267,6 +268,8 @@ function StationInput({
 export default function UserPage() {
   const { username } = useParams<{ username: string }>();
   const [, setLocation] = useLocation();
+
+  if (!username || !isValidUsername(username)) return <NotFound />;
 
   const loggedInUser = localStorage.getItem("auth_user");
   const token = localStorage.getItem("auth_token");
