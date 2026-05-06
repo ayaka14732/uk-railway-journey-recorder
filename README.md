@@ -31,9 +31,9 @@ SQLite is used as the database. The app is designed for personal local use with 
 | Database | SQLite (created automatically)| —    |
 | Scraping | requests + BeautifulSoup4     | —    |
 
-The Vite dev server proxies all `/api/*` requests to the backend (`:8000`), so your cookie is never exposed to the browser.
+During local development, the frontend calls the FastAPI backend at `http://127.0.0.1:8000` by default. Set `VITE_API_BASE_URL` if your backend is running somewhere else.
 
-For production, the frontend can be deployed as a static site, for example on GitHub Pages. Set `VITE_API_BASE_URL` at build time so browser API calls go to your own HTTPS backend endpoint instead of the local dev proxy.
+For production, the frontend can be deployed as a static site, for example on GitHub Pages. Set `VITE_API_BASE_URL` at build time so browser API calls go to your own HTTPS backend endpoint.
 
 ## Running the app
 
@@ -98,7 +98,7 @@ Use the exact origin only: scheme, host, and optional port, without a path.
 
 | Variable            | Required | Description                                                                 |
 |---------------------|----------|-----------------------------------------------------------------------------|
-| `VITE_API_BASE_URL` | No       | Backend API origin, for example `https://api.example.com`; empty uses `/api` |
+| `VITE_API_BASE_URL` | No       | Backend API origin, for example `https://api.example.com`; dev defaults to `http://127.0.0.1:8000`, production empty uses `/api` |
 | `VITE_BASE_PATH`    | No       | Static site base path; for repo Pages use `/<repo-name>/`, for custom domains use `/` |
 
 For GitHub Pages, create repository Variables under **Settings → Secrets and variables → Actions → Variables**:

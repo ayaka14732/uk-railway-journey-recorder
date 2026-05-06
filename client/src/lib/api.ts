@@ -1,4 +1,4 @@
-const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "http://127.0.0.1:8000" : "");
 const apiBaseUrl = rawApiBaseUrl.replace(/\/+$/, "");
 
 export class ApiError extends Error {
