@@ -26,7 +26,7 @@ def get_db_path() -> Path:
     configured = os.getenv("RAIL_HISTORY_SQLITE_PATH")
     if configured:
         return Path(configured)
-    return ROOT_DIR / "rail_history.sqlite3"
+    return ROOT_DIR / "backend" / "var" / "rail_history.sqlite3"
 
 
 def init_db(db_path: Path) -> None:
