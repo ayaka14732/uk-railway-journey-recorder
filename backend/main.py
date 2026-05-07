@@ -6,6 +6,7 @@ and stores confirmed journey records in SQLite.
 
 from __future__ import annotations
 
+import logging
 import os
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
@@ -16,6 +17,7 @@ from typing import Any, Optional
 import bcrypt
 import jwt as pyjwt
 import requests
+import uvicorn.logging as uvicorn_logging
 from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -39,6 +41,43 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30
 
 _http_bearer_optional = HTTPBearer(auto_error=False)
+
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+class HealthCheckAccessFilter(logging.Filter):
+    health_path = "/api/health"
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3:
+            path = str(args[2]).split("?", maxsplit=1)[0]
+            return path != self.health_path
+
+        return self._request_path(record.getMessage()) != self.health_path
+
+    @staticmethod
+    def _request_path(message: str) -> str | None:
+        try:
+            request_line = message.split('"', maxsplit=2)[1]
+            return request_line.split()[1].split("?", maxsplit=1)[0]
+        except (IndexError, ValueError):
+            return None
+
+
+def configure_uvicorn_access_logging() -> None:
+    access_logger = logging.getLogger("uvicorn.access")
+    formatter = uvicorn_logging.AccessFormatter(
+        '%(asctime)s %(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+        datefmt="%Y-%m-%d %H:%M:%S",
+        use_colors=False,
+    )
+
+    for handler in access_logger.handlers:
+        handler.setFormatter(formatter)
+
+    if not any(isinstance(log_filter, HealthCheckAccessFilter) for log_filter in access_logger.filters):
+        access_logger.addFilter(HealthCheckAccessFilter())
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -129,6 +168,7 @@ app.add_middleware(
 @app.on_event("startup")
 def startup() -> None:
     init_db(DB_PATH)
+    configure_uvicorn_access_logging()
 
 
 # ── RTT website scraping ──────────────────────────────────────────────────────
