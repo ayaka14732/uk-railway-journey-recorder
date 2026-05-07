@@ -1,0 +1,13 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: uk-railway-journey-recorder-api:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./var:/app/backend/var
+    ports:
+      - "127.0.0.1:8140:8000"

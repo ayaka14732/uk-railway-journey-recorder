@@ -83,7 +83,7 @@ Open http://localhost:3000 in your browser. Sign in with the credentials you cre
 | Variable                   | Required | Description                                                                     |
 |----------------------------|----------|---------------------------------------------------------------------------------|
 | `JWT_SECRET`               | Yes      | Secret key used to sign JWTs; the server refuses to start if this is not set    |
-| `RAIL_HISTORY_SQLITE_PATH` | No       | Path to the SQLite file; defaults to `rail_history.sqlite3` in the project root |
+| `RAIL_HISTORY_SQLITE_PATH` | No       | Path to the SQLite file; defaults to `backend/var/rail_history.sqlite3` |
 | `CORS_ALLOW_ORIGINS`       | No       | Comma-separated frontend origins allowed to call the API; defaults to local dev |
 
 Example for a GitHub Pages frontend:
@@ -116,6 +116,54 @@ The included GitHub Actions workflow builds the frontend and deploys `dist/publi
 pnpm check    # TypeScript type checking
 pnpm format   # Prettier formatting
 pnpm build    # Production build
+```
+
+## Docker deployment
+
+The backend can be run as a Docker container while Caddy stays on the host and
+terminates HTTPS.
+
+Create `backend/.env` on the server:
+
+```bash
+JWT_SECRET=<strong-random-secret>
+CORS_ALLOW_ORIGINS=https://ayaka14732.github.io
+```
+
+Then start the API:
+
+```bash
+cd backend
+chown -R 1000:1000 var
+docker compose up -d --build
+```
+
+To build the backend image directly:
+
+```bash
+cd backend
+docker build -t uk-railway-journey-recorder-api .
+```
+
+The Compose file binds the API to `127.0.0.1:8140` only, and stores SQLite data
+in `./var/rail_history.sqlite3` by default. Point Caddy at the local
+container port:
+
+```caddyfile
+uk-railway-journey-recorder-api.shn.hk {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8140
+}
+```
+
+Useful operational commands:
+
+```bash
+docker compose logs -f api
+docker compose ps
+docker compose pull
+docker compose up -d --build
+docker compose exec api python -m backend.create_user
 ```
 
 Built with Vibe Coding, initially written by [Manus AI](https://manus.im/), and improved with [Claude Code](https://claude.ai/code).

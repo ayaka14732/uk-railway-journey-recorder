@@ -345,6 +345,11 @@ def save_journey(
 
 # ── API endpoints ─────────────────────────────────────────────────────────────
 
+@app.get("/api/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @app.post("/api/auth/login")
 def login(body: LoginRequest) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
