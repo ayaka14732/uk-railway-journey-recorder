@@ -7,6 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN adduser --disabled-password --gecos "" appuser \
+    && mkdir -p /app/backend/var \
     && chown -R appuser:appuser /app
 
 COPY requirements.txt .

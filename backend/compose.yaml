@@ -8,6 +8,9 @@ services:
     env_file:
       - .env
     volumes:
-      - ./var:/app/backend/var
+      - db_data:/app/backend/var
     ports:
       - "127.0.0.1:8140:8000"
+
+volumes:
+  db_data:

@@ -134,7 +134,6 @@ Then start the API:
 
 ```bash
 cd backend
-chown -R 1000:1000 var
 docker compose up -d --build
 ```
 
@@ -146,14 +145,23 @@ docker build -t uk-railway-journey-recorder-api .
 ```
 
 The Compose file binds the API to `127.0.0.1:8140` only, and stores SQLite data
-in `./var/rail_history.sqlite3` by default. Point Caddy at the local
-container port:
+in a named Docker volume (`db_data`). Point Caddy at the local container port:
 
 ```caddyfile
 uk-railway-journey-recorder-api.shn.hk {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:8140
 }
+```
+
+If you have an existing SQLite file to migrate into the volume:
+
+```bash
+docker compose build
+docker compose run --rm \
+  -v /path/to/rail_history.sqlite3:/tmp/src.sqlite3:ro \
+  api cp /tmp/src.sqlite3 /app/backend/var/rail_history.sqlite3
+docker compose up -d
 ```
 
 Useful operational commands:
