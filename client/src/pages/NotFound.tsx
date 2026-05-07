@@ -1,4 +1,5 @@
 import { publicAsset } from "@/lib/assets";
+import { Link } from "wouter";
 
 export default function NotFound() {
   return (
@@ -13,7 +14,7 @@ export default function NotFound() {
         <div className="section-title"><h2>404 — Page not found</h2></div>
         <p style={{ padding: "10px 8px", fontSize: 13, color: "#555" }}>
           The page you requested does not exist.{" "}
-          <a href={import.meta.env.BASE_URL} style={{ color: "var(--sbb-red)", fontWeight: 700 }}>Go home</a>
+          <Link to="/" style={{ color: "var(--sbb-red)", fontWeight: 700 }}>Go home</Link>
         </p>
       </section>
     </main>
