@@ -1,9 +1,12 @@
+import { publicAsset } from "@/lib/assets";
+import { Link } from "wouter";
+
 export default function NotFound() {
   return (
     <main className="plain-shell">
       <header className="plain-header">
         <div className="brand-mark">
-          <img src="/national-rail.svg" alt="National Rail" />
+          <img src={publicAsset("national-rail.svg")} alt="National Rail" />
           UK Railway Journey Recorder
         </div>
       </header>
@@ -11,7 +14,7 @@ export default function NotFound() {
         <div className="section-title"><h2>404 — Page not found</h2></div>
         <p style={{ padding: "10px 8px", fontSize: 13, color: "#555" }}>
           The page you requested does not exist.{" "}
-          <a href="/" style={{ color: "var(--sbb-red)", fontWeight: 700 }}>Go home</a>
+          <Link to="/" style={{ color: "var(--sbb-red)", fontWeight: 700 }}>Go home</Link>
         </p>
       </section>
     </main>

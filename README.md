@@ -31,7 +31,9 @@ SQLite is used as the database. The app is designed for personal local use with 
 | Database | SQLite (created automatically)| —    |
 | Scraping | requests + BeautifulSoup4     | —    |
 
-The Vite dev server proxies all `/api/*` requests to the backend (`:8000`), so your cookie is never exposed to the browser.
+During local development, the frontend calls the FastAPI backend at `http://127.0.0.1:8000` by default. Set `VITE_API_BASE_URL` if your backend is running somewhere else.
+
+For production, the frontend can be deployed as a static site, for example on GitHub Pages. Set `VITE_API_BASE_URL` at build time so browser API calls go to your own HTTPS backend endpoint.
 
 ## Running the app
 
@@ -76,10 +78,37 @@ Open http://localhost:3000 in your browser. Sign in with the credentials you cre
 
 ### Environment variables
 
+#### Backend
+
 | Variable                   | Required | Description                                                                     |
 |----------------------------|----------|---------------------------------------------------------------------------------|
 | `JWT_SECRET`               | Yes      | Secret key used to sign JWTs; the server refuses to start if this is not set    |
 | `RAIL_HISTORY_SQLITE_PATH` | No       | Path to the SQLite file; defaults to `rail_history.sqlite3` in the project root |
+| `CORS_ALLOW_ORIGINS`       | No       | Comma-separated frontend origins allowed to call the API; defaults to local dev |
+
+Example for a GitHub Pages frontend:
+
+```bash
+CORS_ALLOW_ORIGINS=https://ayaka14732.github.io
+```
+
+Use the exact origin only: scheme, host, and optional port, without a path.
+
+#### Frontend build
+
+| Variable            | Required | Description                                                                 |
+|---------------------|----------|-----------------------------------------------------------------------------|
+| `VITE_API_BASE_URL` | No       | Backend API origin, for example `https://api.example.com`; dev defaults to `http://127.0.0.1:8000`, production empty uses `/api` |
+| `VITE_BASE_PATH`    | No       | Static site base path; for repo Pages use `/<repo-name>/`, for custom domains use `/` |
+
+For GitHub Pages, create repository Variables under **Settings → Secrets and variables → Actions → Variables**:
+
+```text
+VITE_API_BASE_URL=https://api.example.com
+VITE_BASE_PATH=/uk-railway-journey-recorder/
+```
+
+The included GitHub Actions workflow builds the frontend and deploys `dist/public` to Pages. It also copies `index.html` to `404.html` so direct links such as `/uk-railway-journey-recorder/u/<username>/` still load the React app.
 
 ## Miscellaneous
 

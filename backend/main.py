@@ -108,10 +108,18 @@ class UpdateJourneyRequest(BaseModel):
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
+def get_cors_origins() -> list[str]:
+    raw = os.getenv("CORS_ALLOW_ORIGINS", "")
+    configured = [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+    if configured:
+        return configured
+    return ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+
 app = FastAPI(title="UK Rail History API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
