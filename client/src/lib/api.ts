@@ -14,8 +14,14 @@ export function apiUrl(path: string): string {
 
 export async function apiJson<T>(path: string, options?: RequestInit): Promise<T> {
   const { headers: extra, ...rest } = options ?? {};
+  const headers = new Headers(extra);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
+  const method = rest.method?.toUpperCase() ?? "GET";
+  if (rest.body !== undefined && method !== "GET" && method !== "HEAD" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
   const response = await fetch(apiUrl(path), {
-    headers: { "Content-Type": "application/json", ...(extra as Record<string, string> | undefined) },
+    headers,
     ...rest,
   });
   const body = await response.json().catch(() => ({}));

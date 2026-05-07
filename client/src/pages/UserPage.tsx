@@ -266,7 +266,7 @@ export default function UserPage() {
   function logout() {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
-    window.location.href = "/";
+    setLocation("/");
   }
 
   const [rttCookie, setRttCookie] = useState<string>(() => localStorage.getItem("rtt_cookie") ?? "");
