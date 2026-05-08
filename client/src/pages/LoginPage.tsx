@@ -15,17 +15,17 @@ export default function LoginPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!isValidUsername(username)) {
-      setError("Username must start with a letter and contain only letters and digits.");
+      setError("Username must be lowercase letters and digits only.");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      const data = await apiJson<{ token: string; display_name: string }>("/api/auth/login", {
+      const data = await apiJson<{ token: string }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify({ username, password }),
       });
-      auth.set(data.token, username, data.display_name);
+      auth.set(data.token, username);
       setLocation(`/u/${username}/`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

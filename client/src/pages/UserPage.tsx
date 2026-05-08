@@ -201,7 +201,7 @@ export default function UserPage() {
 
   const token = auth.token();
   const canEdit = !!token && auth.user() === username;
-  const displayName = auth.displayName();
+  const [displayName, setDisplayName] = useState<string>(username);
 
   function authHeaders(): Record<string, string> {
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -343,7 +343,8 @@ export default function UserPage() {
     setNotFound(false);
     setMessage("");
     try {
-      const data = await apiJson<{ journeys: StoredJourney[] }>(`/api/journeys?username=${encodeURIComponent(username)}&limit=800`, { headers: authHeaders() });
+      const data = await apiJson<{ display_name: string; journeys: StoredJourney[] }>(`/api/journeys?username=${encodeURIComponent(username)}&limit=800`, { headers: authHeaders() });
+      setDisplayName(data.display_name);
       setHistory(data.journeys);
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {

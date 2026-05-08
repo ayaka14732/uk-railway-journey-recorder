@@ -395,7 +395,7 @@ def login(body: LoginRequest) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            "SELECT id, display_name, password_hash FROM users WHERE username = ?",
+            "SELECT id, password_hash FROM users WHERE username = ?",
             (body.username,),
         ).fetchone()
     try:
@@ -408,7 +408,7 @@ def login(body: LoginRequest) -> dict[str, Any]:
     token = pyjwt.encode(
         {"sub": str(row["id"]), "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM
     )
-    return {"token": token, "display_name": row["display_name"]}
+    return {"token": token}
 
 
 @app.get("/api/stations-local")
@@ -534,7 +534,7 @@ def list_journeys(
 ) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
-        user = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+        user = conn.execute("SELECT id, display_name FROM users WHERE username = ?", (username,)).fetchone()
         if not user:
             raise HTTPException(status_code=404, detail=f"User '{username}' not found")
         is_owner = requesting_user_id is not None and requesting_user_id == user["id"]
@@ -559,4 +559,4 @@ def list_journeys(
         {k: v for k, v in dict(row).items() if is_owner or k not in personal}
         for row in rows
     ]
-    return {"journeys": journeys}
+    return {"display_name": user["display_name"], "journeys": journeys}
