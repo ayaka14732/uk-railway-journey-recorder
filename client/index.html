@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>My UK Railway Journeys</title>
+    <!-- Open Graph / social preview — same tags for all routes since this is a client-side SPA -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="UK Railway Journey Recorder" />
+    <meta property="og:title" content="UK Railway Journey Recorder" />
+    <meta property="og:description" content="Track and share your UK train journeys — delays, operators, routes, and stats." />
+    <!-- og:image must be an absolute URL; hardcoded to the GitHub Pages deployment because VITE_BASE_PATH is not available at crawl time -->
+    <meta property="og:image" content="https://ayaka14732.github.io/uk-railway-journey-recorder/national-rail.svg" />
+    <meta name="twitter:card" content="summary" />
     <link rel="stylesheet" href="https://cdn.syv.red/gh/SBBWeb_v1_9/SBBWeb.css" />
   </head>
   <body>
