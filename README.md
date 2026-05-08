@@ -1,10 +1,10 @@
 # UK Railway Journey Recorder
 
-Log UK train journeys effortlessly by entering just the departure station, arrival station, and boarding time, with all service details filled in automatically.
+Record and analyse your UK train journeys effortlessly.
 
 ## Motivation
 
-Previously I logged my UK rail journeys by hand into a Google Sheet, which meant filling in a large number of fields every time, a tedious and error-prone process.
+Recording and analysing UK rail journeys is no simple task: every trip requires filling in a large number of fields by hand, a tedious and error-prone process.
 
 This project is inspired by the way [myFlightradar24](https://my.flightradar24.com/) tracks flight history: enter just the departure station, arrival station, and approximate boarding time, and the app can look up matching services on [Realtime Trains (RTT)](https://www.realtimetrains.co.uk/). Once you select the correct service, all remaining details (operator, scheduled times, actual times, delay reason, and more) are fetched and filled in automatically.
 
@@ -76,7 +76,7 @@ Open http://localhost:3000 in your browser. Sign in with the credentials you cre
 
 ## Deployment
 
-### Frontend Deployment
+### Frontend deployment
 
 The frontend is designed to be deployed on GitHub Pages.
 
@@ -86,7 +86,7 @@ Set an variable `VITE_API_BASE_URL` to your backend API origin, for example `htt
 
 The included GitHub Actions workflow builds the frontend and deploys it to Pages.
 
-### Backend Deployment
+### Backend deployment
 
 The backend is designed to be run as a Docker container.
 
@@ -122,7 +122,7 @@ If you want to create a new user:
 docker compose exec api python -m backend.create_user
 ```
 
-## Environment Variables
+## Environment variables
 
 ### Backend
 
