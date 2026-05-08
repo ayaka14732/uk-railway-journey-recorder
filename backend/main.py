@@ -395,8 +395,7 @@ def login(body: LoginRequest) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            "SELECT id, password_hash FROM users WHERE username = ?",
-            (body.username,),
+            "SELECT id, password_hash FROM users WHERE username = ?", (body.username,)
         ).fetchone()
     try:
         password_ok = row and bcrypt.checkpw(body.password.encode(), row["password_hash"].encode())
