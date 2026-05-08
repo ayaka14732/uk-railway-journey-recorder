@@ -15,7 +15,7 @@ export default function LoginPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!isValidUsername(username)) {
-      setError("Username must be lowercase letters and digits only.");
+      setError("Username must start with a lowercase letter and contain only lowercase letters and digits.");
       return;
     }
     setLoading(true);
