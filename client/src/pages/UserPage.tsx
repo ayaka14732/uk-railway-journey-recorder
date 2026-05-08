@@ -656,7 +656,7 @@ export default function UserPage() {
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={monthlyData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
                       <Tooltip labelFormatter={() => ""} separator="" itemStyle={{ color: "#111111" }} formatter={(v: number) => [`${v} (${history.length > 0 ? (v / history.length * 100).toFixed(1) : 0}%)`, ""]} />
                       <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
