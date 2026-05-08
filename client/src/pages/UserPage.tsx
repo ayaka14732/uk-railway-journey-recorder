@@ -680,11 +680,11 @@ export default function UserPage() {
                   <div className="stats-chart-title">By Operator</div>
                   <ResponsiveContainer width="100%" height={280}>
                     <PieChart>
-                      <Pie data={operatorData} cx="42%" cy="50%" outerRadius={110} dataKey="value" isAnimationActive={false} label={false}>
+                      <Pie data={operatorData} cx="44%" cy="50%" outerRadius={70} dataKey="value" isAnimationActive={false} label={false}>
                         {operatorData.map((entry, i) => <Cell key={i} fill={OPERATOR_COLORS[entry.name] ? `#${OPERATOR_COLORS[entry.name]}` : CHART_COLORS[i % CHART_COLORS.length]} />)}
                       </Pie>
                       <Tooltip formatter={(v: number, n) => [`${v} (${(v / operatorData.reduce((s, d) => s + d.value, 0) * 100).toFixed(1)}%)`, n]} />
-                      <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 12, paddingLeft: 8 }} />
+                      <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 11, paddingLeft: 8 }} formatter={(v: string) => v.length > 16 ? v.slice(0, 15) + "…" : v} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -693,11 +693,11 @@ export default function UserPage() {
                     <div className="stats-chart-title">By Reason</div>
                     <ResponsiveContainer width="100%" height={280}>
                       <PieChart>
-                        <Pie data={reasonData} cx="42%" cy="50%" outerRadius={110} dataKey="value" isAnimationActive={false} label={false}>
+                        <Pie data={reasonData} cx="44%" cy="50%" outerRadius={70} dataKey="value" isAnimationActive={false} label={false}>
                           {reasonData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                         </Pie>
                         <Tooltip formatter={(v: number, n) => [`${v} (${(v / reasonData.reduce((s, d) => s + d.value, 0) * 100).toFixed(1)}%)`, n]} />
-                        <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 12, paddingLeft: 8 }} />
+                        <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 11, paddingLeft: 8 }} formatter={(v: string) => v.length > 16 ? v.slice(0, 15) + "…" : v} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -709,7 +709,7 @@ export default function UserPage() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
-                      <Tooltip labelFormatter={() => ""} itemStyle={{ color: "#111111" }} formatter={(v: number) => [`${v} (${history.length > 0 ? (v / history.length * 100).toFixed(1) : 0}%)`, "Journeys"]} />
+                      <Tooltip labelFormatter={() => ""} separator="" itemStyle={{ color: "#111111" }} formatter={(v: number) => [`${v} (${history.length > 0 ? (v / history.length * 100).toFixed(1) : 0}%)`, ""]} />
                       <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -721,7 +721,7 @@ export default function UserPage() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
-                      <Tooltip itemStyle={{ color: "#111111" }} formatter={(v: number) => { const t = arrivalDelayData.reduce((s, d) => s + d.value, 0); return [`${v} (${t > 0 ? (v / t * 100).toFixed(1) : 0}%)`, "Journeys"]; }} />
+                      <Tooltip labelFormatter={() => ""} separator="" itemStyle={{ color: "#111111" }} formatter={(v: number) => { const t = arrivalDelayData.reduce((s, d) => s + d.value, 0); return [`${v} (${t > 0 ? (v / t * 100).toFixed(1) : 0}%)`, ""] as [string, string]; }} />
                       <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -733,7 +733,7 @@ export default function UserPage() {
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                       <XAxis type="number" tick={{ fontSize: 11 }} />
                       <YAxis type="category" dataKey="name" width={200} tick={{ fontSize: 11 }} tickFormatter={(v: string) => v.length > 28 ? v.slice(0, 27) + "…" : v} />
-                      <Tooltip labelFormatter={() => ""} itemStyle={{ color: "#111111" }} formatter={(v: number) => [`${v} (${history.length > 0 ? (v / (history.length * 2) * 100).toFixed(1) : 0}%)`, "Journeys"]} />
+                      <Tooltip labelFormatter={() => ""} separator="" itemStyle={{ color: "#111111" }} formatter={(v: number) => [`${v} (${history.length > 0 ? (v / (history.length * 2) * 100).toFixed(1) : 0}%)`, ""]} />
                       <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -846,10 +846,9 @@ export default function UserPage() {
 
       <section className="table-section">
         <div className="section-title">
-          <h2>Journey History</h2>
+          <h2>Journey History <span style={{ fontWeight: 400, fontSize: "0.9em", color: "#666" }}>({history.length})</span></h2>
           <div style={{ display: "flex", gap: "4px" }}>
             <button type="button" onClick={() => setSortAsc((v) => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑ Asc" : "↓ Desc"}</button>
-            <button type="button" onClick={loadHistory}>Refresh</button>
           </div>
         </div>
         <div className="plain-table history-table">

@@ -110,6 +110,11 @@
   --ring: oklch(0.565 0.235 27.5);
 }
 
+body {
+  font-family: "SBB", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-feature-settings: "tnum" 1;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -118,8 +123,6 @@
   body {
     @apply bg-background text-foreground;
     margin: 0;
-    font-family: "SBB", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-feature-settings: "tnum" 1;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -273,7 +276,7 @@
 
 .stats-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
   padding: 16px;
 }
@@ -596,6 +599,10 @@
   width: max-content;
 }
 
+.history-table > table {
+  width: 100%;
+}
+
 .history-table .table-head,
 .history-table .data-row {
   display: table-row;
@@ -739,6 +746,10 @@
     margin-bottom: 6px;
   }
 
+  .header-actions {
+    margin-bottom: 6px;
+  }
+
   .search-form label {
     border-right: 0;
     border-bottom: 1px solid var(--sbb-line);
@@ -755,5 +766,17 @@
   .search-form button {
     width: 100%;
     min-height: 34px;
+  }
+}
+
+@media (max-width: 600px) {
+  .history-table th,
+  .history-table td {
+    font-size: 11px;
+    padding: 3px 5px;
+  }
+
+  .history-table .operator-badge {
+    font-size: 11px;
   }
 }
