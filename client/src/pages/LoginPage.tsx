@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useLocation } from "wouter";
 import { apiJson } from "@/lib/api";
+import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
 
@@ -14,7 +15,7 @@ export default function LoginPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!isValidUsername(username)) {
-      setError("Username must start with a letter and contain only letters and digits.");
+      setError("Username must start with a lowercase letter and contain only lowercase letters and digits.");
       return;
     }
     setLoading(true);
@@ -24,8 +25,7 @@ export default function LoginPage() {
         method: "POST",
         body: JSON.stringify({ username, password }),
       });
-      localStorage.setItem("auth_token", data.token);
-      localStorage.setItem("auth_user", username);
+      auth.set(data.token, username);
       setLocation(`/u/${username}/`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

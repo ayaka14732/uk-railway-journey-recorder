@@ -115,7 +115,7 @@ def get_optional_user(
 # ── Request models ────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
-    username: str = Field(..., pattern=r"^[A-Za-z][A-Za-z0-9]+$")
+    username: str = Field(..., pattern=r"^[a-z][a-z0-9]+$")
     password: str
 
 
@@ -528,12 +528,12 @@ def delete_journey(
 @app.get("/api/journeys")
 def list_journeys(
     limit: int = Query(default=20, ge=1, le=800),
-    username: str = Query(..., pattern=r"^[A-Za-z][A-Za-z0-9]+$"),
+    username: str = Query(..., pattern=r"^[a-z][a-z0-9]+$"),
     requesting_user_id: Optional[int] = Depends(get_optional_user),
 ) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
-        user = conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+        user = conn.execute("SELECT id, display_name FROM users WHERE username = ?", (username,)).fetchone()
         if not user:
             raise HTTPException(status_code=404, detail=f"User '{username}' not found")
         is_owner = requesting_user_id is not None and requesting_user_id == user["id"]
@@ -558,4 +558,4 @@ def list_journeys(
         {k: v for k, v in dict(row).items() if is_owner or k not in personal}
         for row in rows
     ]
-    return {"journeys": journeys}
+    return {"display_name": user["display_name"], "journeys": journeys}

@@ -38,11 +38,17 @@ def init_db(db_path: Path) -> None:
             CREATE TABLE IF NOT EXISTS users (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 username      TEXT NOT NULL UNIQUE,
+                display_name  TEXT NOT NULL,
                 password_hash TEXT NOT NULL,
                 created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
+        existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "display_name" not in existing_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''")
+            conn.execute("UPDATE users SET display_name = username")
+            conn.execute("UPDATE users SET username = lower(username)")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS stations (
