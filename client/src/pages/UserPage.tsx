@@ -78,8 +78,13 @@ type StoredJourney = {
 
 const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
 
+function localDateString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const DEFAULT_FORM: SearchForm = {
-  travelDate: new Date().toISOString().slice(0, 10),
+  travelDate: localDateString(),
   originCrs: "MKC",
   destinationCrs: "EUS",
   time: "18:55",
