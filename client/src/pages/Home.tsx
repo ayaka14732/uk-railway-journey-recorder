@@ -1,15 +1,15 @@
 import { useLocation } from "wouter";
+import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
 
 function logout() {
-  localStorage.removeItem("auth_token");
-  localStorage.removeItem("auth_user");
+  auth.clear();
   window.location.reload();
 }
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const token = localStorage.getItem("auth_token");
+  const token = auth.token();
   return (
     <main className="plain-shell">
       <header className="plain-header">

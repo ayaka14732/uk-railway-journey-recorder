@@ -58,7 +58,7 @@ Then create your first user:
 backend/.venv/bin/python -m backend.create_user
 ```
 
-The script will prompt for a username and password.
+The script will prompt for a display name, a username and a password.
 
 ### Running the app
 

@@ -115,7 +115,7 @@ def get_optional_user(
 # ── Request models ────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
-    username: str = Field(..., pattern=r"^[A-Za-z][A-Za-z0-9]+$")
+    username: str = Field(..., pattern=r"^[a-z][a-z0-9]+$")
     password: str
 
 
@@ -395,7 +395,8 @@ def login(body: LoginRequest) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            "SELECT id, password_hash FROM users WHERE username = ?", (body.username,)
+            "SELECT id, display_name, password_hash FROM users WHERE username = ?",
+            (body.username,),
         ).fetchone()
     try:
         password_ok = row and bcrypt.checkpw(body.password.encode(), row["password_hash"].encode())
@@ -407,7 +408,7 @@ def login(body: LoginRequest) -> dict[str, Any]:
     token = pyjwt.encode(
         {"sub": str(row["id"]), "exp": expire}, JWT_SECRET, algorithm=JWT_ALGORITHM
     )
-    return {"token": token}
+    return {"token": token, "display_name": row["display_name"]}
 
 
 @app.get("/api/stations-local")

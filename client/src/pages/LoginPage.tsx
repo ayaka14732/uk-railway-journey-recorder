@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useLocation } from "wouter";
 import { apiJson } from "@/lib/api";
+import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
 
@@ -20,12 +21,11 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await apiJson<{ token: string }>("/api/auth/login", {
+      const data = await apiJson<{ token: string; display_name: string }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify({ username, password }),
       });
-      localStorage.setItem("auth_token", data.token);
-      localStorage.setItem("auth_user", username);
+      auth.set(data.token, username, data.display_name);
       setLocation(`/u/${username}/`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

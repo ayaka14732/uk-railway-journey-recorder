@@ -6,6 +6,8 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { ApiError, apiJson } from "@/lib/api";
+import { OPERATOR_COLORS, OperatorBadge, normaliseOperator } from "@/lib/operators";
+import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
 import NotFound from "./NotFound";
@@ -76,38 +78,8 @@ type StoredJourney = {
 
 const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
 
-// Selected from https://en.wikipedia.org/wiki/Wikipedia:WikiProject_UK_Railways/Colours_list
-const OPERATOR_COLORS: Record<string, string> = {
-  "Avanti West Coast": "004354",
-  "c2c": "b7007c",
-  "Caledonian Sleeper": "1d2e35",
-  "Chiltern Railways": "00bfff",
-  "CrossCountry": "660f21",
-  "East Midlands Railway": "713563",
-  "Great Northern": "6c2d7e",
-  "Great Western Railway": "0a493e",
-  "Greater Anglia": "d70428",
-  "Heathrow Express": "532e63",
-  "Hull Trains": "de005c",
-  "LNER": "ce0e2d",
-  "London Northwestern Railway": "00bf6f",
-  "London Overground": "e87722",
-  "Lumo": "2b6ef5",
-  "Merseyrail": "fff200",
-  "Northern": "0f0d78",
-  "ScotRail": "1e467d",
-  "South Western Railway": "24398c",
-  "Southeastern": "389cff",
-  "Southern": "8cc63e",
-  "Stansted Express": "6b717a",
-  "Thameslink": "ff5aa4",
-  "TransPennine Express": "09a4ec",
-  "Transport for Wales": "ff0000",
-  "West Midlands Trains": "ff8300",
-};
-
 const DEFAULT_FORM: SearchForm = {
-  travelDate: "2026-04-27",
+  travelDate: new Date().toISOString().slice(0, 10),
   originCrs: "MKC",
   destinationCrs: "EUS",
   time: "18:55",
@@ -131,34 +103,6 @@ function timeOnly(value?: string) {
   if (!value) return "—";
   const match = value.match(/T(\d{2}:\d{2})/);
   return match ? match[1] : value.slice(0, 5);
-}
-
-function operatorFg(hex: string): string {
-  const r = parseInt(hex.slice(0, 2), 16) / 255;
-  const g = parseInt(hex.slice(2, 4), 16) / 255;
-  const b = parseInt(hex.slice(4, 6), 16) / 255;
-  const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-  const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-  return lum > 0.179 ? "#000000" : "#ffffff";
-}
-
-const OPERATOR_ALIASES: Record<string, string> = {
-  "Transpennine Express": "TransPennine Express",
-};
-
-function normaliseOperator(name: string): string {
-  return OPERATOR_ALIASES[name] ?? name;
-}
-
-function OperatorBadge({ name }: { name: string }) {
-  const canonical = normaliseOperator(name);
-  const hex = OPERATOR_COLORS[canonical];
-  if (!hex) return <>{canonical}</>;
-  return (
-    <span className="operator-badge" style={{ backgroundColor: `#${hex}`, color: operatorFg(hex) }}>
-      {canonical}
-    </span>
-  );
 }
 
 function StationInput({
@@ -255,17 +199,16 @@ export default function UserPage() {
 
   if (!username || !isValidUsername(username)) return <NotFound />;
 
-  const loggedInUser = localStorage.getItem("auth_user");
-  const token = localStorage.getItem("auth_token");
-  const canEdit = !!token && loggedInUser === username;
+  const token = auth.token();
+  const canEdit = !!token && auth.user() === username;
+  const displayName = auth.displayName();
 
   function authHeaders(): Record<string, string> {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
   function logout() {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("auth_user");
+    auth.clear();
     setLocation("/");
   }
 
@@ -560,7 +503,7 @@ export default function UserPage() {
       <header className="plain-header">
         <div className="brand-mark">
           <img src={publicAsset("national-rail.svg")} alt="National Rail" />
-          {username}'s UK Railway Journeys
+          {displayName}'s UK Railway Journeys
         </div>
         <div className="header-actions">
           <button type="button" className="stats-header-btn" onClick={() => setShowStats(true)}>Stats</button>
