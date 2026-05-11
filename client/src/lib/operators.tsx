@@ -6,6 +6,7 @@ export const OPERATOR_COLORS: Record<string, string> = {
   "Chiltern Railways": "00bfff",
   "CrossCountry": "660f21",
   "East Midlands Railway": "713563",
+  "Gatwick Express": "eb1e2d",
   "Great Northern": "6c2d7e",
   "Great Western Railway": "0a493e",
   "Greater Anglia": "d70428",
