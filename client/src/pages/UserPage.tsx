@@ -776,7 +776,7 @@ export default function UserPage() {
             <table>
               <thead>
                 <tr className="table-head">
-                  <th>Operator</th><th>Service from</th><th>Service to</th><th>Dep</th><th>Dep plat</th><th>Arr</th><th>Arr plat</th><th>Action</th>
+                  <th>Operator</th><th>Service from</th><th>Service to</th><th>Dep</th><th>Plat</th><th>Arr</th><th>Plat</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -821,7 +821,7 @@ export default function UserPage() {
               <tr className="table-head">
                 <th>Date</th><th>Operator</th><th>From</th><th>To</th><th>Service from</th><th>Service to</th>
                 {showPersonalCols && <><th>Dir</th><th>Reason</th><th>Detailed Reason</th></>}
-                <th>Dep</th><th>Dep plat</th><th>Arr</th><th>Arr plat</th>
+                <th>Dep</th><th>Plat</th><th>Arr</th><th>Plat</th>
                 {canEdit && <th></th>}
               </tr>
             </thead>
