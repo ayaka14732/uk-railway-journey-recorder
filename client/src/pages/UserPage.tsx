@@ -116,6 +116,12 @@ function timeOnly(value?: string) {
   return match ? match[1] : value.slice(0, 5);
 }
 
+function timeWithDelay(time?: string, delay?: number | null) {
+  const displayTime = timeOnly(time);
+  if (delay === null || delay === undefined) return displayTime;
+  return <>{displayTime} (<b className={delayClass(delay)}>{delayText(delay)}</b>)</>;
+}
+
 function StationInput({
   stations,
   value,
@@ -501,7 +507,8 @@ export default function UserPage() {
   }, [showMap, history, stations]);
 
   const showPersonalCols = canEdit && !hidePersonalCols;
-  const historyCols = 12 + (showPersonalCols ? 3 : 0) + (canEdit ? 1 : 0);
+  const candidateCols = 8;
+  const historyCols = 10 + (showPersonalCols ? 3 : 0) + (canEdit ? 1 : 0);
 
   if (notFound) return <NotFound />;
 
@@ -766,31 +773,37 @@ export default function UserPage() {
             <h2>Candidate Services <span className="section-count">({candidates.length})</span></h2>
           </div>
           <div className="plain-table candidate-table">
-            <div className="table-head candidate-row">
-              <span>Operator</span><span>Svc from</span><span>Svc to</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span>Action</span>
-            </div>
-            {candidates.length === 0 ? (
-              <div className="empty-row">No matching services found.</div>
-            ) : candidates.map((candidate) => {
-              const key = `${candidate.identity}-${candidate.departureDate}`;
-              const saved = savedKeys.has(key);
-              return (
-                <div className="data-row candidate-row" key={key}>
-                  <span className="truncate">{candidate.operatorName ? <OperatorBadge name={candidate.operatorName} /> : "—"}</span>
-                  <span className="truncate">{stationLabel(candidate.serviceOriginCrs)}</span>
-                  <span className="truncate">{stationLabel(candidate.serviceDestinationCrs)}</span>
-                  <span>{candidate.platformDeparture ?? "—"}</span>
-                  <span>{timeOnly(candidate.plannedDeparture)}</span>
-                  <b className={delayClass(candidate.departureLatenessMinutes)}>{delayText(candidate.departureLatenessMinutes)}</b>
-                  <span>{candidate.platformArrival ?? "—"}</span>
-                  <span>{timeOnly(candidate.plannedArrival)}</span>
-                  <b className={delayClass(candidate.arrivalLatenessMinutes)}>{delayText(candidate.arrivalLatenessMinutes)}</b>
-                  <button type="button" onClick={() => { setPendingCandidate(candidate); setAddDirection("Outbound"); setAddReason("Leisure"); setAddDetailedReason(""); }} disabled={savingId === candidate.identity || saved}>
-                    {saved ? "Added" : savingId === candidate.identity ? "Adding" : "Add"}
-                  </button>
-                </div>
-              );
-            })}
+            <table>
+              <thead>
+                <tr className="table-head">
+                  <th>Operator</th><th>Service from</th><th>Service to</th><th>Dep</th><th>Dep plat</th><th>Arr</th><th>Arr plat</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {candidates.length === 0 ? (
+                  <tr><td colSpan={candidateCols} className="empty-row">No matching services found.</td></tr>
+                ) : candidates.map((candidate) => {
+                  const key = `${candidate.identity}-${candidate.departureDate}`;
+                  const saved = savedKeys.has(key);
+                  return (
+                    <tr className="data-row" key={key}>
+                      <td>{candidate.operatorName ? <OperatorBadge name={candidate.operatorName} /> : "—"}</td>
+                      <td>{stationLabel(candidate.serviceOriginCrs)}</td>
+                      <td>{stationLabel(candidate.serviceDestinationCrs)}</td>
+                      <td>{timeWithDelay(candidate.plannedDeparture, candidate.departureLatenessMinutes)}</td>
+                      <td>{candidate.platformDeparture ?? "—"}</td>
+                      <td>{timeWithDelay(candidate.plannedArrival, candidate.arrivalLatenessMinutes)}</td>
+                      <td>{candidate.platformArrival ?? "—"}</td>
+                      <td className="action-cell">
+                        <button type="button" onClick={() => { setPendingCandidate(candidate); setAddDirection("Outbound"); setAddReason("Leisure"); setAddDetailedReason(""); }} disabled={savingId === candidate.identity || saved}>
+                          {saved ? "Added" : savingId === candidate.identity ? "Adding" : "Add"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </section>
       )}
@@ -805,10 +818,10 @@ export default function UserPage() {
         <div className="plain-table history-table">
           <table>
             <thead>
-              <tr className="table-head history-row">
-                <th>Date</th><th>Operator</th><th>From</th><th>To</th><th>Svc from</th><th>Svc to</th>
+              <tr className="table-head">
+                <th>Date</th><th>Operator</th><th>From</th><th>To</th><th>Service from</th><th>Service to</th>
                 {showPersonalCols && <><th>Dir</th><th>Reason</th><th>Detailed Reason</th></>}
-                <th>Booked dep</th><th>Dep delay</th><th>Dep plat</th><th>Booked arr</th><th>Arr delay</th><th>Arr plat</th>
+                <th>Dep</th><th>Dep plat</th><th>Arr</th><th>Arr plat</th>
                 {canEdit && <th></th>}
               </tr>
             </thead>
@@ -816,7 +829,7 @@ export default function UserPage() {
               {sortedHistory.length === 0 ? (
                 <tr><td colSpan={historyCols} className="empty-row">No journeys saved.</td></tr>
               ) : sortedHistory.map((item) => (
-                <tr className="data-row history-row" key={item.id}>
+                <tr className="data-row" key={item.id}>
                   <td>{item.travel_date.replace(/-/g, "")}</td>
                   <td>{item.operator_name ? <OperatorBadge name={item.operator_name} /> : "—"}</td>
                   <td>{stationLabel(item.boarded_crs)}</td>
@@ -824,11 +837,9 @@ export default function UserPage() {
                   <td>{stationLabel(item.service_origin_crs)}</td>
                   <td>{stationLabel(item.service_destination_crs)}</td>
                   {showPersonalCols && <><td>{item.direction ?? "—"}</td><td>{item.reason ?? "—"}</td><td>{item.detailed_reason ?? "—"}</td></>}
-                  <td>{timeOnly(item.planned_departure)}</td>
-                  <td><b className={delayClass(item.departure_lateness_minutes)}>{delayText(item.departure_lateness_minutes)}</b></td>
+                  <td>{timeWithDelay(item.planned_departure, item.departure_lateness_minutes)}</td>
                   <td>{item.platform_departure ?? "—"}</td>
-                  <td>{timeOnly(item.planned_arrival)}</td>
-                  <td><b className={delayClass(item.arrival_lateness_minutes)}>{delayText(item.arrival_lateness_minutes)}</b></td>
+                  <td>{timeWithDelay(item.planned_arrival, item.arrival_lateness_minutes)}</td>
                   <td>{item.platform_arrival ?? "—"}</td>
                   {canEdit && (
                     <td>
