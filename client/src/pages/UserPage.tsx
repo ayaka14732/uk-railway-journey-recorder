@@ -459,8 +459,10 @@ export default function UserPage() {
   useEffect(() => {
     if (!showMap || !mapRef.current) return;
     const map = L.map(mapRef.current).setView([54, -2], 6);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 20,
     }).addTo(map);
 
     const routeCounts = new Map<string, number>();
@@ -475,19 +477,17 @@ export default function UserPage() {
       return "#e0001b";
     }
     const stationByCrs = new Map(stations.map((s) => [s.crs, s]));
-    const drawnRoutes = new Set<string>();
+
+    // Draw routes sorted by count ascending so high-frequency routes render on top
+    const sortedRoutes = Array.from(routeCounts.entries()).sort((a, b) => a[1] - b[1]);
     const drawnStations = new Set<string>();
-    for (const j of history) {
-      const key = [j.boarded_crs, j.alighted_crs].sort().join("|");
-      const from = stationByCrs.get(j.boarded_crs);
-      const to = stationByCrs.get(j.alighted_crs);
+    for (const [key, count] of sortedRoutes) {
+      const [crs1, crs2] = key.split("|");
+      const from = stationByCrs.get(crs1);
+      const to = stationByCrs.get(crs2);
       if (from?.lat == null || from?.long == null || to?.lat == null || to?.long == null) continue;
-      if (!drawnRoutes.has(key)) {
-        const count = routeCounts.get(key) ?? 1;
-        L.polyline([[from.lat, from.long], [to.lat, to.long]], { color: routeColor(count), weight: 3, opacity: 0.85 })
-          .addTo(map).bindPopup(`${from.name} ↔ ${to.name} (${count}×)`);
-        drawnRoutes.add(key);
-      }
+      L.polyline([[from.lat, from.long], [to.lat, to.long]], { color: routeColor(count), weight: 3, opacity: 0.85 })
+        .addTo(map).bindPopup(`${from.name} ↔ ${to.name} (${count}×)`);
       for (const st of [from, to]) {
         if (!drawnStations.has(st.crs) && st.lat != null && st.long != null) {
           L.circleMarker([st.lat, st.long], { radius: 3, color: "#333333", fillColor: "#333333", fillOpacity: 1, weight: 0 })
