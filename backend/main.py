@@ -174,10 +174,7 @@ def startup() -> None:
 # ── RTT website scraping ──────────────────────────────────────────────────────
 
 def get_rtt_cookie(x_rtt_cookie: Annotated[Optional[str], Header()] = None) -> str:
-    cookie = (x_rtt_cookie or "").strip()
-    if not cookie:
-        raise HTTPException(status_code=401, detail="No RTT cookie provided. Enter your RTT website cookie in the app.")
-    return cookie
+    return x_rtt_cookie or ""
 
 
 def web_get(url: str, cookie: str) -> BeautifulSoup:

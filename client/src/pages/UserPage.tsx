@@ -227,10 +227,6 @@ export default function UserPage() {
   const [showTokenDialog, setShowTokenDialog] = useState(false);
   const [draftCookie, setDraftCookie] = useState<string>(() => localStorage.getItem("rtt_cookie") ?? "");
 
-  useEffect(() => {
-    if (canEdit && !localStorage.getItem("rtt_cookie")) setShowTokenDialog(true);
-  }, [canEdit]);
-
   function saveCookie() {
     const c = draftCookie.trim();
     if (!c) return;
