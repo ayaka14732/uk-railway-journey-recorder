@@ -748,14 +748,7 @@ body {
 }
 
 @media (max-width: 600px) {
-  .plain-table th,
-  .plain-table td {
-    font-size: 11px;
-    padding: 3px 5px;
-  }
-
-  .plain-table .operator-badge {
-    padding: 1px 5px;
-    font-size: 10px;
+  .plain-shell {
+    zoom: 0.75;
   }
 }
