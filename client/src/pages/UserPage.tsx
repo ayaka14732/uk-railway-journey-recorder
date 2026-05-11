@@ -776,7 +776,7 @@ export default function UserPage() {
             <table>
               <thead>
                 <tr className="table-head">
-                  <th>Operator</th><th>Service from</th><th>Service to</th><th>Dep</th><th>Plat</th><th>Arr</th><th>Plat</th><th>Action</th>
+                  <th>Operator</th><th>Service from</th><th>Service to</th><th>Dep</th><th>Plat</th><th>Arr</th><th>Plat</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -794,10 +794,16 @@ export default function UserPage() {
                       <td>{candidate.platformDeparture ?? "—"}</td>
                       <td>{timeWithDelay(candidate.plannedArrival, candidate.arrivalLatenessMinutes)}</td>
                       <td>{candidate.platformArrival ?? "—"}</td>
-                      <td className="action-cell">
-                        <button type="button" onClick={() => { setPendingCandidate(candidate); setAddDirection("Outbound"); setAddReason("Leisure"); setAddDetailedReason(""); }} disabled={savingId === candidate.identity || saved}>
-                          {saved ? "Added" : savingId === candidate.identity ? "Adding" : "Add"}
-                        </button>
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="icon-btn" title={saved ? "Already added" : savingId === candidate.identity ? "Adding" : "Add"} onClick={() => { setPendingCandidate(candidate); setAddDirection("Outbound"); setAddReason("Leisure"); setAddDetailedReason(""); }} disabled={savingId === candidate.identity || saved}>
+                            {saved ? (
+                              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.5l2.5 2.5 5.5-6"/></svg>
+                            ) : (
+                              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6.5 3v7M3 6.5h7"/></svg>
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

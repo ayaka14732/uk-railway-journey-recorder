@@ -543,13 +543,17 @@ body {
   color: #444444;
 }
 
+.icon-btn:disabled {
+  color: #666666;
+  cursor: default;
+}
+
 .icon-btn.del-btn:hover {
   color: var(--sbb-red);
 }
 
 .search-form button:not(.swap-btn),
-.section-title button,
-.data-row button:not(.icon-btn) {
+.section-title button {
   border: 1px solid var(--sbb-red);
   border-radius: 0;
   background: var(--sbb-red);
@@ -558,8 +562,7 @@ body {
   font-weight: 700;
 }
 
-.search-form button:not(.swap-btn):disabled,
-.data-row button:not(.icon-btn):disabled {
+.search-form button:not(.swap-btn):disabled {
   border-color: #999999;
   background: #dddddd;
   color: #555555;
@@ -639,14 +642,6 @@ body {
 .data-row > * {
   padding: 4px 7px;
   border-right: 1px solid var(--sbb-line);
-}
-
-.action-cell {
-  background-color: var(--sbb-red);
-}
-
-.action-cell button {
-  width: 100%;
 }
 
 .delay-ok,
