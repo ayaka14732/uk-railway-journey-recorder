@@ -585,6 +585,12 @@ body {
   color: #666666;
 }
 
+.section-count {
+  color: #666666;
+  font-size: 0.9em;
+  font-weight: 400;
+}
+
 .section-title button {
   padding: 3px 8px;
 }

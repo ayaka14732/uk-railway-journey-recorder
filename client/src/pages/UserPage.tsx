@@ -407,7 +407,6 @@ export default function UserPage() {
       });
       setCandidates(data.candidates);
       setHasSearched(true);
-      setMessage(data.candidates.length ? `Found ${data.candidates.length} candidate services.` : "No matching services found.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -763,7 +762,9 @@ export default function UserPage() {
 
       {canEdit && hasSearched && (
         <section className="table-section">
-          <div className="section-title"><h2>Candidate Services</h2><span>{candidates.length} rows</span></div>
+          <div className="section-title">
+            <h2>Candidate Services <span className="section-count">({candidates.length})</span></h2>
+          </div>
           <div className="plain-table candidate-table">
             <div className="table-head candidate-row">
               <span>Service</span><span>Svc from</span><span>Svc to</span><span>Operator</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span>Action</span>
@@ -797,7 +798,7 @@ export default function UserPage() {
 
       <section className="table-section">
         <div className="section-title">
-          <h2>Journey History <span style={{ fontWeight: 400, fontSize: "0.9em", color: "#666" }}>({history.length})</span></h2>
+          <h2>Journey History <span className="section-count">({history.length})</span></h2>
           <div style={{ display: "flex", gap: "4px" }}>
             <button type="button" onClick={() => setSortAsc((v) => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑ Asc" : "↓ Desc"}</button>
           </div>
