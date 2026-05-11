@@ -279,6 +279,13 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 16px;
   padding: 16px;
+  font: inherit;
+}
+
+.stats-charts svg,
+.stats-charts text,
+.stats-charts .recharts-wrapper {
+  font-family: inherit;
 }
 
 .stats-chart {
@@ -289,12 +296,13 @@ body {
 }
 
 .stats-chart-title {
+  font-family: inherit;
   font-weight: 700;
   font-size: 12px;
   color: #444444;
   text-align: center;
   margin-bottom: 4px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 .token-dialog {
