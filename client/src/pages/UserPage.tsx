@@ -767,7 +767,7 @@ export default function UserPage() {
           </div>
           <div className="plain-table candidate-table">
             <div className="table-head candidate-row">
-              <span>Service</span><span>Svc from</span><span>Svc to</span><span>Operator</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span>Action</span>
+              <span>Operator</span><span>Svc from</span><span>Svc to</span><span>Dep plat</span><span>Booked dep</span><span>Dep delay</span><span>Arr plat</span><span>Booked arr</span><span>Arr delay</span><span>Action</span>
             </div>
             {candidates.length === 0 ? (
               <div className="empty-row">No matching services found.</div>
@@ -776,10 +776,9 @@ export default function UserPage() {
               const saved = savedKeys.has(key);
               return (
                 <div className="data-row candidate-row" key={key}>
-                  <span>{candidate.trainReportingIdentity || candidate.identity}</span>
+                  <span className="truncate">{candidate.operatorName ? <OperatorBadge name={candidate.operatorName} /> : "—"}</span>
                   <span className="truncate">{stationLabel(candidate.serviceOriginCrs)}</span>
                   <span className="truncate">{stationLabel(candidate.serviceDestinationCrs)}</span>
-                  <span className="truncate">{candidate.operatorName ? <OperatorBadge name={candidate.operatorName} /> : "—"}</span>
                   <span>{candidate.platformDeparture ?? "—"}</span>
                   <span>{timeOnly(candidate.plannedDeparture)}</span>
                   <b className={delayClass(candidate.departureLatenessMinutes)}>{delayText(candidate.departureLatenessMinutes)}</b>
