@@ -389,14 +389,14 @@ body {
 
 .search-form {
   display: grid;
-  grid-template-columns: 200px 270px 32px 270px 160px 160px 100px;
+  grid-template-columns: minmax(170px, 0.8fr) minmax(260px, 1.25fr) 32px minmax(260px, 1.25fr) minmax(140px, 0.65fr) minmax(150px, 0.55fr) 78px;
   gap: 0;
   border-bottom: 1px solid var(--sbb-line);
 }
 
 .search-form label {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
@@ -713,7 +713,7 @@ body {
 }
 
 
-@media (max-width: 900px) {
+@media (max-width: 1130px) {
   .plain-header,
   .search-form {
     display: block;
