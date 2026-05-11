@@ -136,13 +136,13 @@ class ResolveRequest(BaseModel):
     save: bool = False
     direction: Optional[str] = None
     reason: Optional[str] = None
-    detailedReason: Optional[str] = None
+    detailedReason: Optional[str] = Field(None, max_length=45)
 
 
 class UpdateJourneyRequest(BaseModel):
     direction: Optional[str] = None
     reason: Optional[str] = None
-    detailed_reason: Optional[str] = None
+    detailed_reason: Optional[str] = Field(None, max_length=45)
 
 
 # ── App ───────────────────────────────────────────────────────────────────────

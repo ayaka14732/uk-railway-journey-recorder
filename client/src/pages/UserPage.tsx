@@ -91,6 +91,12 @@ const DEFAULT_FORM: SearchForm = {
   windowMinutes: 10,
 };
 
+const DETAIL_MAX_CHARS = 45;
+
+function limitDetail(value: string): string {
+  return Array.from(value).slice(0, DETAIL_MAX_CHARS).join("");
+}
+
 function delayText(value?: number | null) {
   if (value === null || value === undefined) return "—";
   if (value === 0) return "RT";
@@ -566,7 +572,7 @@ export default function UserPage() {
               </div>
               <div className="add-dialog-field">
                 <span>Detail</span>
-                <input type="text" className="add-dialog-input" value={addDetailedReason} onChange={(e) => setAddDetailedReason(e.target.value)} placeholder="Optional note" />
+                <input type="text" className="add-dialog-input" value={addDetailedReason} onChange={(e) => setAddDetailedReason(limitDetail(e.target.value))} placeholder="Optional note" />
               </div>
             </div>
             <div className="token-dialog-actions">
@@ -605,7 +611,7 @@ export default function UserPage() {
               </div>
               <div className="add-dialog-field">
                 <span>Detail</span>
-                <input type="text" className="add-dialog-input" value={editDetailedReason} onChange={(e) => setEditDetailedReason(e.target.value)} placeholder="Optional note" />
+                <input type="text" className="add-dialog-input" value={editDetailedReason} onChange={(e) => setEditDetailedReason(limitDetail(e.target.value))} placeholder="Optional note" />
               </div>
             </div>
             <div className="token-dialog-actions">
