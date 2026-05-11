@@ -493,7 +493,7 @@ export default function UserPage() {
       const from = stationByCrs.get(crs1);
       const to = stationByCrs.get(crs2);
       if (from?.lat == null || from?.long == null || to?.lat == null || to?.long == null) continue;
-      L.polyline([[from.lat, from.long], [to.lat, to.long]], { color: routeColor(count), weight: 3, opacity: 0.85 })
+      L.polyline([[from.lat, from.long], [to.lat, to.long]], { color: routeColor(count), weight: 2, opacity: 0.85 })
         .addTo(map).bindPopup(`${from.name} ↔ ${to.name} (${count}×)`);
       for (const st of [from, to]) {
         if (!drawnStations.has(st.crs) && st.lat != null && st.long != null) {
