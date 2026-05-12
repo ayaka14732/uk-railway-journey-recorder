@@ -449,7 +449,7 @@ export default function UserPage() {
         <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setEditingJourney(null); }}>
           <div className="token-dialog">
             <div className="token-dialog-header">
-              <span>Edit Journey — {editingJourney.travel_date}</span>
+              <span>Edit Journey</span>
               <button type="button" className="token-dialog-close" onClick={() => setEditingJourney(null)}>×</button>
             </div>
             <div className="add-dialog-body">
