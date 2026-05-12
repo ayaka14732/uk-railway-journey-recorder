@@ -194,6 +194,7 @@ export default function JourneySearch({
   async function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
+    setHasSearched(false);
     onMessage?.("");
     setCandidates([]);
     try {
