@@ -433,7 +433,7 @@ def search_services(
     if soup.select_one('form[action*="login"]'):
         raise HTTPException(status_code=401, detail="RTT cookie expired or invalid.")
     if "historical search horizon" in page_text:
-        raise HTTPException(status_code=403, detail="This date is beyond RTT's historical search horizon.")
+        raise HTTPException(status_code=403, detail="This date is beyond RTT's historical search horizon. Please make sure you have an RTT+ subscription and have set your RTT cookie.")
 
     req_mins = int(request.time[:2]) * 60 + int(request.time[3:])
     raw_candidates: list[dict[str, Any]] = []
