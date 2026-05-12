@@ -246,11 +246,13 @@ body {
 }
 
 .token-dialog.options-dialog {
-  width: 320px;
+  width: min(520px, 92vw);
 }
 
 .options-body {
   padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
 .options-row {
@@ -259,6 +261,50 @@ body {
   gap: 8px;
   cursor: pointer;
   font-size: 13px;
+}
+
+.options-block {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--sbb-line);
+}
+
+.options-block:first-child {
+  padding-top: 0;
+}
+
+.options-block:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.options-split-row {
+  justify-content: space-between;
+}
+
+.history-date-option {
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.options-check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.history-date-option input {
+  width: 210px;
+  max-width: 100%;
+  border: 1px solid #bbbbbb;
+  background: #ffffff;
+  padding: 3px 6px;
+  font: inherit;
+}
+
+.history-date-option .options-check-label input {
+  width: auto;
 }
 
 .token-dialog.map-dialog {

@@ -129,6 +129,8 @@ export default function UserPage() {
   const [showMap, setShowMap] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [hidePersonalCols, setHidePersonalCols] = useState(() => localStorage.getItem("hide_personal_cols") === "1");
+  const [hideHistoryAfterEnabled, setHideHistoryAfterEnabled] = useState(() => localStorage.getItem("hide_history_after_enabled") === "1" || !!localStorage.getItem("hide_history_after_date"));
+  const [hideHistoryAfterDate, setHideHistoryAfterDate] = useState(() => localStorage.getItem("hide_history_after_date") ?? "");
   const mapRef = useRef<HTMLDivElement>(null);
   const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [addReason, setAddReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
@@ -305,6 +307,12 @@ export default function UserPage() {
     const timeCmp = (a.planned_departure ?? "").localeCompare(b.planned_departure ?? "");
     return sortAsc ? (dateCmp !== 0 ? dateCmp : timeCmp) : (dateCmp !== 0 ? -dateCmp : -timeCmp);
   }), [history, sortAsc]);
+
+  const activeHideHistoryAfterDate = hideHistoryAfterEnabled ? hideHistoryAfterDate : "";
+  const visibleHistory = useMemo(() => {
+    if (!activeHideHistoryAfterDate) return sortedHistory;
+    return sortedHistory.filter((j) => j.travel_date <= activeHideHistoryAfterDate);
+  }, [sortedHistory, activeHideHistoryAfterDate]);
 
   useEffect(() => {
     loadHistory();
@@ -573,21 +581,33 @@ export default function UserPage() {
               <span>Options</span>
               <button type="button" className="token-dialog-close" onClick={() => setShowOptions(false)}>×</button>
             </div>
-            <div className="options-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="options-body">
               {token && (
-                <div className="options-row" style={{ justifyContent: "space-between", paddingBottom: 10, borderBottom: "1px solid var(--sbb-line)" }}>
-                  <span>RTT Cookie</span>
-                  <button type="button" onClick={() => { setDraftCookie(rttCookie); setShowOptions(false); setShowTokenDialog(true); }} style={{ border: "1px solid #bbbbbb", background: "#fff", padding: "2px 8px", font: "inherit", fontSize: 13 }}>
-                    {rttCookie ? "Cookie ✓" : "Set cookie"}
-                  </button>
+                <div className="options-block">
+                  <div className="options-row options-split-row">
+                    <span>RTT Cookie</span>
+                    <button type="button" onClick={() => { setDraftCookie(rttCookie); setShowOptions(false); setShowTokenDialog(true); }} style={{ border: "1px solid #bbbbbb", background: "#fff", padding: "2px 8px", font: "inherit", fontSize: 13 }}>
+                      {rttCookie ? "Cookie ✓" : "Set cookie"}
+                    </button>
+                  </div>
                 </div>
               )}
-              <div>
+              <div className="options-block">
                 <label className="options-row">
                   <input type="checkbox" checked={hidePersonalCols} onChange={(e) => { setHidePersonalCols(e.target.checked); localStorage.setItem("hide_personal_cols", e.target.checked ? "1" : "0"); }} />
                   Hide Dir, Reason and Detailed Reason
                 </label>
                 <p style={{ margin: "3px 0 0 21px", fontSize: 11, color: "#888", lineHeight: 1.3 }}>These fields are never visible when viewing someone else's journeys.</p>
+              </div>
+              <div className="options-block">
+                <label className="options-row history-date-option">
+                  <span className="options-check-label">
+                    <input type="checkbox" checked={hideHistoryAfterEnabled} onChange={(e) => { setHideHistoryAfterEnabled(e.target.checked); if (e.target.checked) localStorage.setItem("hide_history_after_enabled", "1"); else localStorage.removeItem("hide_history_after_enabled"); }} />
+                    Hide Journey History after date
+                  </span>
+                  <input type="date" value={hideHistoryAfterDate} onChange={(e) => { setHideHistoryAfterDate(e.target.value); if (e.target.value) localStorage.setItem("hide_history_after_date", e.target.value); else localStorage.removeItem("hide_history_after_date"); }} />
+                </label>
+                <p style={{ margin: "3px 0 0 0", fontSize: 11, color: "#888", lineHeight: 1.3 }}>Only the table is filtered; statistics and map still use all journeys.</p>
               </div>
             </div>
             <div className="token-dialog-actions">
@@ -619,7 +639,7 @@ export default function UserPage() {
 
       <section className="table-section">
         <div className="section-title">
-          <h2>Journey History <span className="section-count">({history.length})</span></h2>
+          <h2>Journey History <span className="section-count">({activeHideHistoryAfterDate ? `${visibleHistory.length}/${history.length}` : history.length})</span></h2>
           <div style={{ display: "flex", gap: "4px" }}>
             <button type="button" onClick={() => setSortAsc((v) => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑ Asc" : "↓ Desc"}</button>
           </div>
@@ -635,9 +655,9 @@ export default function UserPage() {
               </tr>
             </thead>
             <tbody>
-              {sortedHistory.length === 0 ? (
-                <tr><td colSpan={historyCols} className="empty-row">No journeys saved.</td></tr>
-              ) : sortedHistory.map((item) => (
+              {visibleHistory.length === 0 ? (
+                <tr><td colSpan={historyCols} className="empty-row">No journeys.</td></tr>
+              ) : visibleHistory.map((item) => (
                 <tr className="data-row" key={item.id}>
                   <td>{item.travel_date.replace(/-/g, "")}</td>
                   <td>{item.operator_name ? <OperatorBadge name={item.operator_name} /> : "—"}</td>
