@@ -163,7 +163,7 @@ export default function UserPage() {
 
   const arrivalDelayData = useMemo(() => {
     const buckets = [
-      { name: "< 2 min", min: -Infinity, max: 2, value: 0 },
+      { name: "≤ 1 min", min: -Infinity, max: 2, value: 0 },
       { name: "2-15 min", min: 2, max: 15, value: 0 },
       { name: "15–30 min", min: 15, max: 30, value: 0 },
       { name: "30–60 min", min: 30, max: 60, value: 0 },
@@ -515,6 +515,18 @@ export default function UserPage() {
                   </div>
                 )}
                 <div className="stats-chart">
+                  <div className="stats-chart-title">Arrival Delay Distribution</div>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie data={arrivalDelayData} cx="44%" cy="50%" outerRadius={70} dataKey="value" isAnimationActive={false} label={false}>
+                        {arrivalDelayData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(v: number, n) => { const t = arrivalDelayData.reduce((s, d) => s + d.value, 0); return [`${v} (${t > 0 ? (v / t * 100).toFixed(1) : 0}%)`, n]; }} />
+                      <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 11, paddingLeft: 8 }} formatter={(v: string) => v.length > 16 ? v.slice(0, 15) + "…" : v} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="stats-chart">
                   <div className="stats-chart-title">Journeys by Month</div>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={monthlyData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
@@ -522,18 +534,6 @@ export default function UserPage() {
                       <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
                       <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
                       <Tooltip labelFormatter={() => ""} separator="" itemStyle={{ color: "#111111" }} formatter={(v: number) => [`${v} (${history.length > 0 ? (v / history.length * 100).toFixed(1) : 0}%)`, ""]} />
-                      <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="stats-chart">
-                  <div className="stats-chart-title">Arrival Delay Distribution</div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={arrivalDelayData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={30} />
-                      <Tooltip labelFormatter={() => ""} separator="" itemStyle={{ color: "#111111" }} formatter={(v: number) => { const t = arrivalDelayData.reduce((s, d) => s + d.value, 0); return [`${v} (${t > 0 ? (v / t * 100).toFixed(1) : 0}%)`, ""] as [string, string]; }} />
                       <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
