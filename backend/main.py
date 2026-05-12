@@ -418,7 +418,6 @@ def stations_local() -> dict[str, Any]:
 @app.post("/api/search-services")
 def search_services(
     request: SearchRequest,
-    _: int = Depends(get_current_user),
     cookie: str = Depends(get_rtt_cookie),
 ) -> dict[str, Any]:
     time4 = request.time.replace(":", "")
