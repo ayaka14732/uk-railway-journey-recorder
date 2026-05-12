@@ -4,6 +4,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import LoginPage from "./pages/LoginPage";
+import SearchPage from "./pages/SearchPage";
 import UserPage from "./pages/UserPage";
 
 const routerBase = import.meta.env.BASE_URL.replace(/\/$/, "") || undefined;
@@ -13,8 +14,8 @@ function Router() {
     <WouterRouter base={routerBase}>
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/login" component={LoginPage} />
-        <Route path="/u/:username" component={UserPage} />
+        <Route path="/login/" component={LoginPage} />
+        <Route path="/search/" component={SearchPage} />
         <Route path="/u/:username/" component={UserPage} />
         <Route component={NotFound} />
       </Switch>

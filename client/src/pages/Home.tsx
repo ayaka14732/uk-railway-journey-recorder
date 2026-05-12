@@ -20,7 +20,7 @@ export default function Home() {
         {token ? (
           <button type="button" className="token-header-btn" style={{ marginLeft: "auto" }} onClick={logout}>Sign out</button>
         ) : (
-          <button type="button" className="token-header-btn" style={{ marginLeft: "auto" }} onClick={() => setLocation("/login")}>Sign in</button>
+          <button type="button" className="token-header-btn" style={{ marginLeft: "auto" }} onClick={() => setLocation("/login/")}>Sign in</button>
         )}
       </header>
       <section style={{ maxWidth: 600, margin: "64px auto", padding: "0 20px" }}>
