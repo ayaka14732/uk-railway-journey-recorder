@@ -163,8 +163,8 @@ export default function UserPage() {
 
   const arrivalDelayData = useMemo(() => {
     const buckets = [
-      { name: "< 5 min", min: -Infinity, max: 5, value: 0 },
-      { name: "5–15 min", min: 5, max: 15, value: 0 },
+      { name: "< 2 min", min: -Infinity, max: 2, value: 0 },
+      { name: "2-15 min", min: 2, max: 15, value: 0 },
       { name: "15–30 min", min: 15, max: 30, value: 0 },
       { name: "30–60 min", min: 30, max: 60, value: 0 },
       { name: "60+ min", min: 60, max: Infinity, value: 0 },
