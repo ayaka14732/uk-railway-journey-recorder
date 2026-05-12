@@ -429,7 +429,7 @@ export default function UserPage() {
               </div>
               <div className="add-dialog-field">
                 <span>Detail</span>
-                <input type="text" className="add-dialog-input" value={addDetailedReason} onChange={(e) => setAddDetailedReason(limitDetail(e.target.value))} placeholder="Optional note" />
+                <input type="text" name="journey-detail-note" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} data-lpignore="true" data-1p-ignore="true" data-bwignore="true" className="add-dialog-input" value={addDetailedReason} onChange={(e) => setAddDetailedReason(limitDetail(e.target.value))} placeholder="Note" />
               </div>
             </div>
             <div className="token-dialog-actions">
@@ -468,7 +468,7 @@ export default function UserPage() {
               </div>
               <div className="add-dialog-field">
                 <span>Detail</span>
-                <input type="text" className="add-dialog-input" value={editDetailedReason} onChange={(e) => setEditDetailedReason(limitDetail(e.target.value))} placeholder="Optional note" />
+                <input type="text" name="journey-detail-note" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} data-lpignore="true" data-1p-ignore="true" data-bwignore="true" className="add-dialog-input" value={editDetailedReason} onChange={(e) => setEditDetailedReason(limitDetail(e.target.value))} placeholder="Note" />
               </div>
             </div>
             <div className="token-dialog-actions">
