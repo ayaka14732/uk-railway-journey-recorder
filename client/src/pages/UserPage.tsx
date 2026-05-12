@@ -51,6 +51,11 @@ type StoredJourney = {
   detailed_reason?: string;
 };
 
+type PendingAdd = {
+  candidate: Candidate;
+  searchForm: SearchForm;
+};
+
 const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
 
 const DETAIL_MAX_CHARS = 45;
@@ -121,8 +126,7 @@ export default function UserPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [savedKeys, setSavedKeys] = useState<Set<string>>(() => new Set());
   const savedKeyById = useRef<Map<number, string>>(new Map());
-  const [pendingCandidate, setPendingCandidate] = useState<Candidate | null>(null);
-  const [pendingSearchForm, setPendingSearchForm] = useState<SearchForm | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
 
   const [notFound, setNotFound] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -271,8 +275,7 @@ export default function UserPage() {
 
   async function addJourney(candidate: Candidate, searchForm: SearchForm, direction: string, reason: string, detailedReason: string) {
     setSavingId(candidate.identity);
-    setPendingCandidate(null);
-    setPendingSearchForm(null);
+    setPendingAdd(null);
     setMessage("");
     try {
       const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
@@ -403,12 +406,12 @@ export default function UserPage() {
         </div>
       )}
 
-      {canEdit && pendingCandidate && (
-        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPendingCandidate(null); }}>
+      {canEdit && pendingAdd && (
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPendingAdd(null); }}>
           <div className="token-dialog">
             <div className="token-dialog-header">
-              <span>Add Journey — {pendingCandidate.trainReportingIdentity || pendingCandidate.identity}</span>
-              <button type="button" className="token-dialog-close" onClick={() => setPendingCandidate(null)}>×</button>
+              <span>Add Journey — {pendingAdd.candidate.trainReportingIdentity || pendingAdd.candidate.identity}</span>
+              <button type="button" className="token-dialog-close" onClick={() => setPendingAdd(null)}>×</button>
             </div>
             <div className="add-dialog-body">
               <div className="add-dialog-field">
@@ -433,10 +436,10 @@ export default function UserPage() {
               </div>
             </div>
             <div className="token-dialog-actions">
-              <button type="button" onClick={() => pendingSearchForm && addJourney(pendingCandidate, pendingSearchForm, addDirection, addReason, addDetailedReason)} disabled={savingId === pendingCandidate.identity || !pendingSearchForm}>
-                {savingId === pendingCandidate.identity ? "Adding…" : "Add to history"}
+              <button type="button" onClick={() => addJourney(pendingAdd.candidate, pendingAdd.searchForm, addDirection, addReason, addDetailedReason)} disabled={savingId === pendingAdd.candidate.identity}>
+                {savingId === pendingAdd.candidate.identity ? "Adding…" : "Add to history"}
               </button>
-              <button type="button" onClick={() => setPendingCandidate(null)}>Cancel</button>
+              <button type="button" onClick={() => setPendingAdd(null)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -626,8 +629,7 @@ export default function UserPage() {
           savingId={savingId}
           onMessage={setMessage}
           onAddCandidate={(candidate, searchForm) => {
-            setPendingCandidate(candidate);
-            setPendingSearchForm(searchForm);
+            setPendingAdd({ candidate, searchForm });
             setAddDirection("Outbound");
             setAddReason("Leisure");
             setAddDetailedReason("");
