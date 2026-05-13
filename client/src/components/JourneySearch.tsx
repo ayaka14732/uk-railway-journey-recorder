@@ -137,6 +137,9 @@ function StationInput({
           else if (e.key === "Enter" && filtered.length > 0) { e.preventDefault(); commit(filtered[activeIndex].crs); }
         }}
         placeholder={editing ? "Type station name or CRS…" : undefined}
+        spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="none"
       />
       {editing && filtered.length > 0 && (
         <div className="station-dropdown">
