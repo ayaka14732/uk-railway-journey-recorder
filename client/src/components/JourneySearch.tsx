@@ -127,7 +127,6 @@ function StationInput({
       <input
         ref={inputRef}
         value={editing ? query : displayLabel}
-        readOnly={!editing}
         onFocus={() => { setEditing(true); setQuery(displayLabel); }}
         onClick={() => { if (!editing) { setEditing(true); setQuery(displayLabel); } }}
         onChange={(e) => setQuery(e.target.value)}
@@ -148,7 +147,7 @@ function StationInput({
               className={`station-option${i === activeIndex ? " active" : ""}`}
               onMouseDown={() => commit(s.crs)}
             >
-              <span>{s.name}</span><span className="station-crs">{s.crs}</span>
+              {s.name} ({s.crs})
             </div>
           ))}
         </div>
