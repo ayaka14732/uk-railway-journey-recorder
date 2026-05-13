@@ -54,12 +54,12 @@ export default function SearchPage() {
           <button type="button" className="stats-header-btn" onClick={() => { setDraftCookie(rttCookie); setShowTokenDialog(true); }}>
             {rttCookie ? "Cookie ✓" : "Set cookie"}
           </button>
+          {token ? (
+            <button type="button" className="token-header-btn" onClick={logout}>Sign out</button>
+          ) : (
+            <button type="button" className="token-header-btn" onClick={() => setLocation("/login/")}>Sign in</button>
+          )}
         </div>
-        {token ? (
-          <button type="button" className="token-header-btn" onClick={logout}>Sign out</button>
-        ) : (
-          <button type="button" className="token-header-btn" onClick={() => setLocation("/login/")}>Sign in</button>
-        )}
       </header>
 
       {showTokenDialog && (

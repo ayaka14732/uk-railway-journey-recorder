@@ -763,19 +763,14 @@ body {
 
 
 @media (max-width: 1130px) {
-  .plain-header,
+  .plain-header {
+    flex-wrap: wrap;
+  }
+
   .search-form {
     display: block;
   }
 
-  .brand-mark {
-    display: inline-flex;
-    margin-bottom: 6px;
-  }
-
-  .header-actions {
-    margin-bottom: 6px;
-  }
 
   .search-form label {
     border-right: 0;
