@@ -154,5 +154,3 @@ pnpm check    # TypeScript type checking
 pnpm format   # Prettier formatting
 pnpm build    # Production build
 ```
-
-Built with Vibe Coding, initially written by [Manus AI](https://manus.im/), and improved with [Claude Code](https://claude.ai/code) and [Codex](https://chatgpt.com/codex).
