@@ -12,6 +12,7 @@ import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
 import AnchoredTooltip from "@/components/AnchoredTooltip";
+import JourneyMetaDialog from "@/components/JourneyMetaDialog";
 import { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
 import NewJourneyDialog from "@/components/NewJourneyDialog";
 import NotFound from "./NotFound";
@@ -437,80 +438,37 @@ export default function UserPage() {
       )}
 
       {canEdit && pendingAdd && (
-        <div className="token-overlay stacked-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPendingAdd(null); }}>
-          <div className="token-dialog">
-            <div className="token-dialog-header">
-              <span>Add Journey</span>
-              <button type="button" className="token-dialog-close" onClick={() => setPendingAdd(null)}>×</button>
-            </div>
-            <div className="add-dialog-body">
-              <div className="add-dialog-field">
-                <span>Direction</span>
-                <div className="add-dialog-options">
-                  {(["Outbound", "Inbound"] as const).map((d) => (
-                    <button type="button" key={d} className={`add-dialog-option${addDirection === d ? " selected" : ""}`} onClick={() => setAddDirection(d)}>{d}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="add-dialog-field">
-                <span>Reason</span>
-                <div className="add-dialog-options">
-                  {(["Leisure", "Work", "Life", "Love"] as const).map((r) => (
-                    <button type="button" key={r} className={`add-dialog-option${addReason === r ? " selected" : ""}`} onClick={() => setAddReason(r)}>{r}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="add-dialog-field">
-                <span>Detail</span>
-                <input type="text" name="journey-detail-note" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} data-lpignore="true" data-1p-ignore="true" data-bwignore="true" className="add-dialog-input" value={addDetailedReason} onChange={(e) => setAddDetailedReason(limitDetail(e.target.value))} placeholder="Note" />
-              </div>
-            </div>
-            <div className="token-dialog-actions">
-              <button type="button" onClick={() => addJourney(pendingAdd.candidate, pendingAdd.searchForm, addDirection, addReason, addDetailedReason)} disabled={savingId === pendingAdd.candidate.identity}>
-                {savingId === pendingAdd.candidate.identity ? "Adding…" : "Add to history"}
-              </button>
-              <button type="button" onClick={() => setPendingAdd(null)}>Cancel</button>
-            </div>
-          </div>
-        </div>
+        <JourneyMetaDialog
+          title="Add Journey"
+          stacked
+          direction={addDirection}
+          reason={addReason}
+          detailedReason={addDetailedReason}
+          primaryLabel="Add to history"
+          saving={savingId === pendingAdd.candidate.identity}
+          savingLabel="Adding…"
+          onDirectionChange={setAddDirection}
+          onReasonChange={setAddReason}
+          onDetailedReasonChange={(value) => setAddDetailedReason(limitDetail(value))}
+          onSubmit={() => addJourney(pendingAdd.candidate, pendingAdd.searchForm, addDirection, addReason, addDetailedReason)}
+          onClose={() => setPendingAdd(null)}
+        />
       )}
 
       {canEdit && editingJourney && (
-        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setEditingJourney(null); setEditJourneyMessage(""); } }}>
-          <div className="token-dialog">
-            <div className="token-dialog-header">
-              <span>Edit Journey</span>
-              <button type="button" className="token-dialog-close" onClick={() => { setEditingJourney(null); setEditJourneyMessage(""); }}>×</button>
-            </div>
-            {editJourneyMessage && <div className="message-line dialog-message" role="status">{editJourneyMessage}</div>}
-            <div className="add-dialog-body">
-              <div className="add-dialog-field">
-                <span>Direction</span>
-                <div className="add-dialog-options">
-                  {(["Outbound", "Inbound"] as const).map((d) => (
-                    <button type="button" key={d} className={`add-dialog-option${editDirection === d ? " selected" : ""}`} onClick={() => setEditDirection(d)}>{d}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="add-dialog-field">
-                <span>Reason</span>
-                <div className="add-dialog-options">
-                  {(["Leisure", "Work", "Life", "Love"] as const).map((r) => (
-                    <button type="button" key={r} className={`add-dialog-option${editReason === r ? " selected" : ""}`} onClick={() => setEditReason(r)}>{r}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="add-dialog-field">
-                <span>Detail</span>
-                <input type="text" name="journey-detail-note" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} data-lpignore="true" data-1p-ignore="true" data-bwignore="true" className="add-dialog-input" value={editDetailedReason} onChange={(e) => setEditDetailedReason(limitDetail(e.target.value))} placeholder="Note" />
-              </div>
-            </div>
-            <div className="token-dialog-actions">
-              <button type="button" onClick={() => updateJourney(editingJourney.id, editDirection, editReason, editDetailedReason)}>Save</button>
-              <button type="button" onClick={() => setEditingJourney(null)}>Cancel</button>
-            </div>
-          </div>
-        </div>
+        <JourneyMetaDialog
+          title="Edit Journey"
+          message={editJourneyMessage}
+          direction={editDirection}
+          reason={editReason}
+          detailedReason={editDetailedReason}
+          primaryLabel="Save"
+          onDirectionChange={setEditDirection}
+          onReasonChange={setEditReason}
+          onDetailedReasonChange={(value) => setEditDetailedReason(limitDetail(value))}
+          onSubmit={() => updateJourney(editingJourney.id, editDirection, editReason, editDetailedReason)}
+          onClose={() => { setEditingJourney(null); setEditJourneyMessage(""); }}
+        />
       )}
 
       {showStats && (
