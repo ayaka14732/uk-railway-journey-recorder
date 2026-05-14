@@ -9,6 +9,15 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
+EXTRA_STATIONS = (
+    # International stations used by RTT searches but absent from the UK CRS CSV.
+    ("AMS", "Amsterdam Central", 52.378333, 4.9),
+    ("BXS", "Brussels South", 50.835161, 4.335222),
+    ("LIU", "Lille Europe", 50.639444, 3.075278),
+    ("PBN", "Paris North", 48.881111, 2.355278),
+    ("ROT", "Rotterdam Central", 51.924444, 4.469444),
+)
+
 
 def load_local_env() -> None:
     env_file = ROOT_DIR / "backend" / ".env"
@@ -69,6 +78,10 @@ def init_db(db_path: Path) -> None:
                         for r in csv.DictReader(f) if r.get("crs")
                     ),
                 )
+        conn.executemany(
+            "INSERT OR IGNORE INTO stations (crs, name, lat, long) VALUES (?, ?, ?, ?)",
+            EXTRA_STATIONS,
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS journeys (
