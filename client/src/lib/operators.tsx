@@ -65,6 +65,7 @@ export function operatorTextColor(hex: string): string {
 export function OperatorBadge({ name }: { name: string }) {
   const canonical = normaliseOperator(name);
   const hex = OPERATOR_COLORS[canonical];
+  if (!hex) return <>{canonical}</>;
   return (
     <span className="operator-badge" style={{ backgroundColor: `#${hex}`, color: operatorTextColor(hex) }}>
       {canonical}
