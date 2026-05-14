@@ -47,6 +47,7 @@ export const OPERATOR_COLORS: Record<string, string> = Object.fromEntries(
 export const OPERATOR_NAMES = new Set(OPERATOR_DETAILS.map((operator) => operator.name));
 
 const OPERATOR_ALIASES: Record<string, string> = {
+  "Lumo (East Coast)": "Lumo",
   "Transpennine Express": "TransPennine Express",
 };
 
