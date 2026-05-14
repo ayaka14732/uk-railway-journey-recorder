@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type FocusEventHandler, type MouseEventHandler, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type FocusEventHandler, type MouseEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 type TooltipState = {
@@ -9,7 +9,7 @@ type TooltipState = {
 };
 
 type TriggerProps = {
-  "aria-describedby": string;
+  "aria-describedby"?: string;
   onBlur: FocusEventHandler<HTMLElement>;
   onClick: MouseEventHandler<HTMLElement>;
   onFocus: FocusEventHandler<HTMLElement>;
@@ -49,6 +49,16 @@ export default function AnchoredTooltip({ children, id, label }: AnchoredTooltip
     setTooltip(null);
   }
 
+  useEffect(() => {
+    if (!tooltip) return;
+    window.addEventListener("resize", hide);
+    window.addEventListener("scroll", hide, true);
+    return () => {
+      window.removeEventListener("resize", hide);
+      window.removeEventListener("scroll", hide, true);
+    };
+  }, [tooltip]);
+
   function tooltipStyle(): CSSProperties {
     if (!tooltip) return {};
     return {
@@ -60,7 +70,7 @@ export default function AnchoredTooltip({ children, id, label }: AnchoredTooltip
   }
 
   const triggerProps: TriggerProps = {
-    "aria-describedby": id,
+    "aria-describedby": tooltip ? id : undefined,
     onBlur: hide,
     onClick: (e) => show(e.currentTarget),
     onFocus: (e) => show(e.currentTarget),
