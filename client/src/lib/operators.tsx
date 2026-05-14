@@ -1,10 +1,11 @@
-// Selected from https://en.wikipedia.org/wiki/Wikipedia:WikiProject_UK_Railways/Colours_list
 export type OperatorMeta = {
   name: string;
   code: string;
   color: string;
 };
 
+// Colours selected from https://en.wikipedia.org/wiki/Wikipedia:WikiProject_UK_Railways/Colours_list
+// Codes selected from http://www.railwaycodes.org.uk/operators/toccodes.shtm
 export const OPERATOR_DETAILS: OperatorMeta[] = [
   { name: "Avanti West Coast", code: "VT", color: "004354" },
   { name: "c2c", code: "CC", color: "b7007c" },

@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FocusEventHandler, type MouseEventHandler, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FocusEventHandler, type PointerEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 type TooltipState = {
@@ -11,8 +11,8 @@ type TooltipState = {
 type TriggerProps = {
   "aria-describedby"?: string;
   onBlur: FocusEventHandler<HTMLElement>;
-  onClick: MouseEventHandler<HTMLElement>;
   onFocus: FocusEventHandler<HTMLElement>;
+  onPointerDown: PointerEventHandler<HTMLElement>;
 };
 
 type AnchoredTooltipProps = {
@@ -23,6 +23,7 @@ type AnchoredTooltipProps = {
 
 export default function AnchoredTooltip({ children, id, label }: AnchoredTooltipProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const suppressNextFocus = useRef(false);
 
   function show(anchor: HTMLElement) {
     const anchorRect = anchor.getBoundingClientRect();
@@ -72,8 +73,22 @@ export default function AnchoredTooltip({ children, id, label }: AnchoredTooltip
   const triggerProps: TriggerProps = {
     "aria-describedby": tooltip ? id : undefined,
     onBlur: hide,
-    onClick: (e) => show(e.currentTarget),
-    onFocus: (e) => show(e.currentTarget),
+    onFocus: (e) => {
+      if (suppressNextFocus.current) {
+        suppressNextFocus.current = false;
+        return;
+      }
+      show(e.currentTarget);
+    },
+    onPointerDown: (e) => {
+      if (e.pointerType === "mouse") {
+        suppressNextFocus.current = true;
+        return;
+      }
+      e.preventDefault();
+      if (tooltip) hide();
+      else show(e.currentTarget);
+    },
   };
 
   return (
