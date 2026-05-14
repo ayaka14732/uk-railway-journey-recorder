@@ -35,8 +35,12 @@ export default function AnchoredTooltip({ children, id, label }: AnchoredTooltip
       const minX = 0;
       const maxX = document.documentElement.clientWidth;
       const centeredLeft = anchorCenter - tooltipWidth / 2;
-      const left = Math.min(Math.max(minX, centeredLeft), maxX - tooltipWidth);
-      const arrowX = Math.min(Math.max(8, anchorCenter - left), tooltipWidth - 8);
+      const maxLeft = Math.max(minX, maxX - tooltipWidth);
+      const left = Math.min(Math.max(minX, centeredLeft), maxLeft);
+      const arrowInset = Math.min(8, tooltipWidth / 2);
+      const minArrowX = arrowInset;
+      const maxArrowX = Math.max(minArrowX, tooltipWidth - arrowInset);
+      const arrowX = Math.min(Math.max(minArrowX, anchorCenter - left), maxArrowX);
       setTooltip({ left, y: anchorRect.top - 5, arrowX, ready: true });
     });
   }
