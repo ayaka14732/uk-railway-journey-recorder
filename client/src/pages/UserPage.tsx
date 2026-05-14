@@ -3,14 +3,15 @@
  * Keep the page English-only, simple, compact, red/black/white, and table-first.
  * Avoid decorative imagery, animation, language switching, platform fields, and detail panels.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { ApiError, apiJson } from "@/lib/api";
-import { OPERATOR_COLORS, OperatorBadge, normaliseOperator } from "@/lib/operators";
+import { OPERATOR_COLORS, OPERATOR_DETAILS, OPERATOR_NAMES, OperatorBadge, normaliseOperator, operatorTextColor } from "@/lib/operators";
 import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
+import AnchoredTooltip from "@/components/AnchoredTooltip";
 import JourneySearch, { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
 import NotFound from "./NotFound";
 import L from "leaflet";
@@ -165,6 +166,24 @@ export default function UserPage() {
     return result;
   }, [history]);
 
+  const tocCoverageData = useMemo(() => {
+    const riddenOperators = new Set<string>();
+    for (const j of history) {
+      if (!j.operator_name) continue;
+      const key = normaliseOperator(j.operator_name);
+      if (!OPERATOR_NAMES.has(key)) continue;
+      riddenOperators.add(key);
+    }
+    const all = OPERATOR_DETAILS.map((operator) => ({
+      ...operator,
+      ridden: riddenOperators.has(operator.name),
+    }));
+    return {
+      ridden: all.filter((toc) => toc.ridden),
+      unridden: all.filter((toc) => !toc.ridden),
+    };
+  }, [history]);
+
   const arrivalDelayData = useMemo(() => {
     const buckets = [
       { name: "≤ 1 min", min: -Infinity, max: 2, value: 0 },
@@ -218,6 +237,10 @@ export default function UserPage() {
     if (!crs) return "—";
     const name = stationMap.get(crs);
     return name ? `${name} (${crs})` : crs;
+  }
+
+  function tocChipStyle(hex: string): CSSProperties {
+    return { backgroundColor: `#${hex}`, color: operatorTextColor(hex) };
   }
 
   async function loadStations() {
@@ -552,6 +575,40 @@ export default function UserPage() {
                       <Bar dataKey="value" name="Journeys" fill="#e0001b" isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
+                </div>
+                <div className="stats-chart">
+                  <div className="stats-chart-title">TOC Coverage</div>
+                  <div className="toc-chip-list">
+                    {tocCoverageData.ridden.map((toc) => (
+                      <AnchoredTooltip key={toc.name} id={`toc-tip-${toc.code}`} label={toc.name}>
+                        {(triggerProps) => (
+                          <button
+                            type="button"
+                            className="toc-chip toc-chip-ridden"
+                            style={tocChipStyle(toc.color)}
+                            aria-label={toc.name}
+                            {...triggerProps}
+                          >
+                            {toc.code}
+                          </button>
+                        )}
+                      </AnchoredTooltip>
+                    ))}
+                    {tocCoverageData.unridden.map((toc) => (
+                      <AnchoredTooltip key={toc.name} id={`toc-tip-${toc.code}`} label={toc.name}>
+                        {(triggerProps) => (
+                          <button
+                            type="button"
+                            className="toc-chip toc-chip-unridden"
+                            aria-label={toc.name}
+                            {...triggerProps}
+                          >
+                            {toc.code}
+                          </button>
+                        )}
+                      </AnchoredTooltip>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
