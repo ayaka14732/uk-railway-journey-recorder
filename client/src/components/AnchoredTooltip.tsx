@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type FocusEventHandler
 import { createPortal } from "react-dom";
 
 type TooltipState = {
+  anchorCenterX: number;
   left: number;
   y: number;
   arrowX: number;
@@ -23,32 +24,34 @@ type AnchoredTooltipProps = {
 
 export default function AnchoredTooltip({ children, id, label }: AnchoredTooltipProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
-  const suppressNextFocus = useRef(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   function show(anchor: HTMLElement) {
     const anchorRect = anchor.getBoundingClientRect();
-    const anchorCenter = anchorRect.left + anchorRect.width / 2;
-    setTooltip({ left: 0, y: anchorRect.top - 5, arrowX: 0, ready: false });
-    window.requestAnimationFrame(() => {
-      const tooltipNode = document.getElementById(id);
-      if (!tooltipNode) return;
-      const tooltipWidth = tooltipNode.offsetWidth;
-      const minX = 0;
-      const maxX = document.documentElement.clientWidth;
-      const centeredLeft = anchorCenter - tooltipWidth / 2;
-      const maxLeft = Math.max(minX, maxX - tooltipWidth);
-      const left = Math.min(Math.max(minX, centeredLeft), maxLeft);
-      const arrowInset = Math.min(8, tooltipWidth / 2);
-      const minArrowX = arrowInset;
-      const maxArrowX = Math.max(minArrowX, tooltipWidth - arrowInset);
-      const arrowX = Math.min(Math.max(minArrowX, anchorCenter - left), maxArrowX);
-      setTooltip({ left, y: anchorRect.top - 5, arrowX, ready: true });
-    });
+    setTooltip({ anchorCenterX: anchorRect.left + anchorRect.width / 2, left: 0, y: anchorRect.top - 5, arrowX: 0, ready: false });
   }
 
   function hide() {
     setTooltip(null);
   }
+
+  useEffect(() => {
+    if (!tooltip || tooltip.ready) return;
+    const tooltipNode = tooltipRef.current;
+    if (!tooltipNode) return;
+    const { anchorCenterX, y } = tooltip;
+    const tooltipWidth = tooltipNode.offsetWidth;
+    const minX = 0;
+    const maxX = document.documentElement.clientWidth;
+    const centeredLeft = anchorCenterX - tooltipWidth / 2;
+    const maxLeft = Math.max(minX, maxX - tooltipWidth);
+    const left = Math.min(Math.max(minX, centeredLeft), maxLeft);
+    const arrowInset = Math.min(8, tooltipWidth / 2);
+    const minArrowX = arrowInset;
+    const maxArrowX = Math.max(minArrowX, tooltipWidth - arrowInset);
+    const arrowX = Math.min(Math.max(minArrowX, anchorCenterX - left), maxArrowX);
+    setTooltip({ anchorCenterX, left, y, arrowX, ready: true });
+  }, [tooltip]);
 
   useEffect(() => {
     if (!tooltip) return;
@@ -74,17 +77,11 @@ export default function AnchoredTooltip({ children, id, label }: AnchoredTooltip
     "aria-describedby": tooltip ? id : undefined,
     onBlur: hide,
     onFocus: (e) => {
-      if (suppressNextFocus.current) {
-        suppressNextFocus.current = false;
-        return;
-      }
+      if (!e.currentTarget.matches(':focus-visible')) return;
       show(e.currentTarget);
     },
     onPointerDown: (e) => {
-      if (e.pointerType === "mouse") {
-        suppressNextFocus.current = true;
-        return;
-      }
+      if (e.pointerType === "mouse") return;
       e.preventDefault();
       if (tooltip) hide();
       else show(e.currentTarget);
@@ -95,7 +92,7 @@ export default function AnchoredTooltip({ children, id, label }: AnchoredTooltip
     <span className="anchored-tooltip-wrap" onMouseEnter={(e) => show(e.currentTarget)} onMouseLeave={hide}>
       {children(triggerProps)}
       {tooltip && createPortal(
-        <div id={id} className="anchored-tooltip" role="tooltip" style={tooltipStyle()}>
+        <div ref={tooltipRef} id={id} className="anchored-tooltip" role="tooltip" style={tooltipStyle()}>
           {label}
         </div>,
         document.body,
