@@ -1,26 +1,25 @@
+import { useState } from "react";
 import JourneySearch, { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
 
 export default function NewJourneyDialog({
   stations,
   rttCookie,
   authHeaders,
-  message,
   savedKeys,
   savingId,
-  onMessage,
   onClose,
   onAddCandidate,
 }: {
   stations: Station[];
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
-  message: string;
   savedKeys?: Set<string>;
   savingId: string;
-  onMessage: (message: string) => void;
   onClose: () => void;
   onAddCandidate: (candidate: Candidate, searchForm: SearchForm) => void;
 }) {
+  const [message, setMessage] = useState("");
+
   return (
     <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="token-dialog journey-search-dialog">
@@ -36,8 +35,11 @@ export default function NewJourneyDialog({
           message={message}
           savedKeys={savedKeys}
           savingId={savingId}
-          onMessage={onMessage}
-          onAddCandidate={onAddCandidate}
+          onMessage={setMessage}
+          onAddCandidate={(candidate, searchForm) => {
+            setMessage("");
+            onAddCandidate(candidate, searchForm);
+          }}
         />
       </div>
     </div>

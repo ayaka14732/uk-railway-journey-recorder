@@ -133,7 +133,6 @@ export default function UserPage() {
 
   const [notFound, setNotFound] = useState(false);
   const [showJourneySearch, setShowJourneySearch] = useState(false);
-  const [journeySearchMessage, setJourneySearchMessage] = useState("");
   const [showStats, setShowStats] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -144,6 +143,7 @@ export default function UserPage() {
   const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [addReason, setAddReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
   const [addDetailedReason, setAddDetailedReason] = useState<string>("");
+  const [addJourneyMessage, setAddJourneyMessage] = useState("");
   const [editingJourney, setEditingJourney] = useState<StoredJourney | null>(null);
   const [editJourneyMessage, setEditJourneyMessage] = useState("");
   const [editDirection, setEditDirection] = useState<"Outbound" | "Inbound">("Outbound");
@@ -304,6 +304,7 @@ export default function UserPage() {
 
   async function addJourney(candidate: Candidate, searchForm: SearchForm, direction: string, reason: string, detailedReason: string) {
     setSavingId(candidate.identity);
+    setAddJourneyMessage("");
     setMessage("");
     try {
       const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
@@ -326,11 +327,10 @@ export default function UserPage() {
       if (data.journeyId !== null) savedKeyById.current.set(data.journeyId!, savedKey);
       setPendingAdd(null);
       setShowJourneySearch(false);
-      setJourneySearchMessage("");
+      setAddJourneyMessage("");
       await loadHistory();
     } catch (error) {
-      setPendingAdd(null);
-      setJourneySearchMessage(error instanceof Error ? error.message : String(error));
+      setAddJourneyMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setSavingId("");
     }
@@ -440,6 +440,7 @@ export default function UserPage() {
       {canEdit && pendingAdd && (
         <JourneyMetaDialog
           title="Add Journey"
+          message={addJourneyMessage}
           stacked
           direction={addDirection}
           reason={addReason}
@@ -451,7 +452,7 @@ export default function UserPage() {
           onReasonChange={setAddReason}
           onDetailedReasonChange={(value) => setAddDetailedReason(limitDetail(value))}
           onSubmit={() => addJourney(pendingAdd.candidate, pendingAdd.searchForm, addDirection, addReason, addDetailedReason)}
-          onClose={() => setPendingAdd(null)}
+          onClose={() => { setPendingAdd(null); setAddJourneyMessage(""); }}
         />
       )}
 
@@ -648,13 +649,11 @@ export default function UserPage() {
           stations={stations}
           rttCookie={rttCookie}
           authHeaders={authHeaders}
-          message={journeySearchMessage}
           savedKeys={savedKeys}
           savingId={savingId}
-          onMessage={setJourneySearchMessage}
-          onClose={() => { setShowJourneySearch(false); setJourneySearchMessage(""); }}
+          onClose={() => setShowJourneySearch(false)}
           onAddCandidate={(candidate, searchForm) => {
-            setJourneySearchMessage("");
+            setAddJourneyMessage("");
             setPendingAdd({ candidate, searchForm });
             setAddDirection("Outbound");
             setAddReason("Leisure");
@@ -669,7 +668,7 @@ export default function UserPage() {
         <div className="section-title">
           <h2>Journey History <span className="section-count">({activeHideHistoryAfterDate ? `${visibleHistory.length}/${history.length}` : history.length})</span></h2>
           <div style={{ display: "flex", gap: "4px" }}>
-            {canEdit && <button type="button" onClick={() => { setJourneySearchMessage(""); setShowJourneySearch(true); }}>Add</button>}
+            {canEdit && <button type="button" onClick={() => setShowJourneySearch(true)}>Add</button>}
           </div>
         </div>
         <div className="plain-table history-table">
