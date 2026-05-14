@@ -700,14 +700,24 @@ export default function UserPage() {
         <div className="section-title">
           <h2>Journey History <span className="section-count">({activeHideHistoryAfterDate ? `${visibleHistory.length}/${history.length}` : history.length})</span></h2>
           <div style={{ display: "flex", gap: "4px" }}>
-            <button type="button" onClick={() => setSortAsc((v) => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑ Asc" : "↓ Desc"}</button>
+            <button type="button" onClick={() => setSortAsc((v) => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑" : "↓"}</button>
           </div>
         </div>
         <div className="plain-table history-table">
           <table>
             <thead>
               <tr className="table-head">
-                <th>Date</th><th>Operator</th><th>From</th><th>To</th><th>Service from</th><th>Service to</th>
+                <th>
+                  <div className="sortable-th">
+                    <span>Date</span>
+                    <button type="button" className="th-sort-btn" onClick={() => setSortAsc((v) => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"} aria-label={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>
+                      <span className="sort-triangles" aria-hidden="true">
+                        <span className={sortAsc ? "active" : ""}>▲</span>
+                        <span className={sortAsc ? "" : "active"}>▼</span>
+                      </span>
+                    </button>
+                  </div>
+                </th><th>Operator</th><th>From</th><th>To</th><th>Service from</th><th>Service to</th>
                 {showPersonalCols && <><th>Dir</th><th>Reason</th><th>Detailed Reason</th></>}
                 <th>Dep</th><th>Plat</th><th>Arr</th><th>Plat</th>
                 {canEdit && <th></th>}

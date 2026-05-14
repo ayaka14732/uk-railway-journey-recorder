@@ -741,6 +741,78 @@ body {
   font-weight: 700;
 }
 
+.sortable-th {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  width: 100%;
+}
+
+.th-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: #333333;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sort-triangles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 12px;
+}
+
+.sort-triangles span {
+  width: 0;
+  height: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
+.sort-triangles span:first-child {
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-bottom: 5px solid #aaaaaa;
+}
+
+.sort-triangles span:last-child {
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top: 5px solid #aaaaaa;
+}
+
+.sort-triangles span:first-child.active {
+  border-bottom-color: #333333;
+}
+
+.sort-triangles span:last-child.active {
+  border-top-color: #333333;
+}
+
+.th-sort-btn:hover {
+  color: #111111;
+}
+
+.th-sort-btn:hover .sort-triangles span:first-child.active {
+  border-bottom-color: #111111;
+}
+
+.th-sort-btn:hover .sort-triangles span:last-child.active {
+  border-top-color: #111111;
+}
+
 .data-row {
   border-bottom: 1px solid var(--sbb-line);
   background: #ffffff;
