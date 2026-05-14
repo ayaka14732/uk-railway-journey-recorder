@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type FocusEventHandler, type PointerEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+let hideActive: (() => void) | null = null;
+
 type TooltipState = {
   anchorCenterX: number;
   left: number;
@@ -27,11 +29,14 @@ export default function AnchoredTooltip({ children, id, label }: AnchoredTooltip
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   function show(anchor: HTMLElement) {
+    if (hideActive && hideActive !== hide) hideActive();
+    hideActive = hide;
     const anchorRect = anchor.getBoundingClientRect();
     setTooltip({ anchorCenterX: anchorRect.left + anchorRect.width / 2, left: 0, y: anchorRect.top - 5, arrowX: 0, ready: false });
   }
 
   function hide() {
+    if (hideActive === hide) hideActive = null;
     setTooltip(null);
   }
 
