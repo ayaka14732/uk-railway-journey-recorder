@@ -33,11 +33,13 @@ export const OPERATOR_DETAILS: OperatorMeta[] = [
   { name: "South Western Railway", code: "SW", color: "24398c" },
   { name: "Southeastern", code: "SE", color: "389cff" },
   { name: "Southern", code: "SN", color: "8cc63e" },
+  // Not a train operator, but a service operated by Greater Anglia.
+  // { name: "Stansted Express", code: "SX", color: "6b717a" },
   { name: "Thameslink", code: "TL", color: "ff5aa4" },
   { name: "TransPennine Express", code: "TP", color: "09a4ec" },
   { name: "Transport for Wales", code: "AW", color: "ff0000" },
-  // "West Midlands Trains": "ff8300", // LM, same as London Northwestern Railway
-  // "Stansted Express": "6b717a", // SX, not a train operator, but a service operated by Greater Anglia
+  // RTT reports both West Midlands Railway and London Northwestern Railway as LM; use WM locally to distinguish the brands.
+  { name: "West Midlands Railway", code: "WM", color: "ff8300" },
 ];
 
 export const OPERATOR_COLORS: Record<string, string> = Object.fromEntries(
