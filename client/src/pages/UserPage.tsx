@@ -12,7 +12,8 @@ import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
 import AnchoredTooltip from "@/components/AnchoredTooltip";
-import JourneySearch, { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
+import { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
+import NewJourneyDialog from "@/components/NewJourneyDialog";
 import NotFound from "./NotFound";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -685,31 +686,23 @@ export default function UserPage() {
       )}
 
       {canEdit && showJourneySearch && (
-        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setShowJourneySearch(false); setJourneySearchMessage(""); } }}>
-          <div className="token-dialog journey-search-dialog">
-            <div className="token-dialog-header">
-              <span>New Journey</span>
-              <button type="button" className="token-dialog-close" onClick={() => { setShowJourneySearch(false); setJourneySearchMessage(""); }}>×</button>
-            </div>
-            <JourneySearch
-              stations={stations}
-              rttCookie={rttCookie}
-              authHeaders={authHeaders}
-              title={null}
-              message={journeySearchMessage}
-              savedKeys={savedKeys}
-              savingId={savingId}
-              onMessage={setJourneySearchMessage}
-              onAddCandidate={(candidate, searchForm) => {
-                setJourneySearchMessage("");
-                setPendingAdd({ candidate, searchForm });
-                setAddDirection("Outbound");
-                setAddReason("Leisure");
-                setAddDetailedReason("");
-              }}
-            />
-          </div>
-        </div>
+        <NewJourneyDialog
+          stations={stations}
+          rttCookie={rttCookie}
+          authHeaders={authHeaders}
+          message={journeySearchMessage}
+          savedKeys={savedKeys}
+          savingId={savingId}
+          onMessage={setJourneySearchMessage}
+          onClose={() => { setShowJourneySearch(false); setJourneySearchMessage(""); }}
+          onAddCandidate={(candidate, searchForm) => {
+            setJourneySearchMessage("");
+            setPendingAdd({ candidate, searchForm });
+            setAddDirection("Outbound");
+            setAddReason("Leisure");
+            setAddDetailedReason("");
+          }}
+        />
       )}
 
       {message && <div className="message-line" role="status">{message}</div>}
