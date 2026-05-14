@@ -130,6 +130,8 @@ export default function UserPage() {
   const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
 
   const [notFound, setNotFound] = useState(false);
+  const [showJourneySearch, setShowJourneySearch] = useState(false);
+  const [journeySearchMessage, setJourneySearchMessage] = useState("");
   const [showStats, setShowStats] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -141,6 +143,7 @@ export default function UserPage() {
   const [addReason, setAddReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
   const [addDetailedReason, setAddDetailedReason] = useState<string>("");
   const [editingJourney, setEditingJourney] = useState<StoredJourney | null>(null);
+  const [editJourneyMessage, setEditJourneyMessage] = useState("");
   const [editDirection, setEditDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [editReason, setEditReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
   const [editDetailedReason, setEditDetailedReason] = useState<string>("");
@@ -269,6 +272,7 @@ export default function UserPage() {
   }
 
   async function updateJourney(id: number, direction: string, reason: string, detailedReason: string) {
+    setEditJourneyMessage("");
     try {
       await apiJson(`/api/journeys/${id}`, {
         method: "PATCH",
@@ -278,7 +282,7 @@ export default function UserPage() {
       setHistory((prev) => prev.map((j) => j.id === id ? { ...j, direction, reason, detailed_reason: detailedReason } : j));
       setEditingJourney(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
+      setEditJourneyMessage(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -298,7 +302,6 @@ export default function UserPage() {
 
   async function addJourney(candidate: Candidate, searchForm: SearchForm, direction: string, reason: string, detailedReason: string) {
     setSavingId(candidate.identity);
-    setPendingAdd(null);
     setMessage("");
     try {
       const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
@@ -319,10 +322,13 @@ export default function UserPage() {
       const savedKey = `${candidate.identity}-${candidate.departureDate}`;
       setSavedKeys((prev) => new Set(prev).add(savedKey));
       if (data.journeyId !== null) savedKeyById.current.set(data.journeyId!, savedKey);
-      setMessage(`Added ${data.detail.identity || candidate.identity} to journey history.`);
+      setPendingAdd(null);
+      setShowJourneySearch(false);
+      setJourneySearchMessage("");
       await loadHistory();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
+      setPendingAdd(null);
+      setJourneySearchMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setSavingId("");
     }
@@ -430,10 +436,10 @@ export default function UserPage() {
       )}
 
       {canEdit && pendingAdd && (
-        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPendingAdd(null); }}>
+        <div className="token-overlay stacked-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPendingAdd(null); }}>
           <div className="token-dialog">
             <div className="token-dialog-header">
-              <span>Add Journey — {pendingAdd.candidate.trainReportingIdentity || pendingAdd.candidate.identity}</span>
+              <span>Add Journey</span>
               <button type="button" className="token-dialog-close" onClick={() => setPendingAdd(null)}>×</button>
             </div>
             <div className="add-dialog-body">
@@ -469,12 +475,13 @@ export default function UserPage() {
       )}
 
       {canEdit && editingJourney && (
-        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setEditingJourney(null); }}>
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setEditingJourney(null); setEditJourneyMessage(""); } }}>
           <div className="token-dialog">
             <div className="token-dialog-header">
               <span>Edit Journey</span>
-              <button type="button" className="token-dialog-close" onClick={() => setEditingJourney(null)}>×</button>
+              <button type="button" className="token-dialog-close" onClick={() => { setEditingJourney(null); setEditJourneyMessage(""); }}>×</button>
             </div>
+            {editJourneyMessage && <div className="message-line dialog-message" role="status">{editJourneyMessage}</div>}
             <div className="add-dialog-body">
               <div className="add-dialog-field">
                 <span>Direction</span>
@@ -677,21 +684,32 @@ export default function UserPage() {
         </div>
       )}
 
-      {canEdit && (
-        <JourneySearch
-          stations={stations}
-          rttCookie={rttCookie}
-          authHeaders={authHeaders}
-          savedKeys={savedKeys}
-          savingId={savingId}
-          onMessage={setMessage}
-          onAddCandidate={(candidate, searchForm) => {
-            setPendingAdd({ candidate, searchForm });
-            setAddDirection("Outbound");
-            setAddReason("Leisure");
-            setAddDetailedReason("");
-          }}
-        />
+      {canEdit && showJourneySearch && (
+        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setShowJourneySearch(false); setJourneySearchMessage(""); } }}>
+          <div className="token-dialog journey-search-dialog">
+            <div className="token-dialog-header">
+              <span>New Journey</span>
+              <button type="button" className="token-dialog-close" onClick={() => { setShowJourneySearch(false); setJourneySearchMessage(""); }}>×</button>
+            </div>
+            <JourneySearch
+              stations={stations}
+              rttCookie={rttCookie}
+              authHeaders={authHeaders}
+              title={null}
+              message={journeySearchMessage}
+              savedKeys={savedKeys}
+              savingId={savingId}
+              onMessage={setJourneySearchMessage}
+              onAddCandidate={(candidate, searchForm) => {
+                setJourneySearchMessage("");
+                setPendingAdd({ candidate, searchForm });
+                setAddDirection("Outbound");
+                setAddReason("Leisure");
+                setAddDetailedReason("");
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {message && <div className="message-line" role="status">{message}</div>}
@@ -700,7 +718,7 @@ export default function UserPage() {
         <div className="section-title">
           <h2>Journey History <span className="section-count">({activeHideHistoryAfterDate ? `${visibleHistory.length}/${history.length}` : history.length})</span></h2>
           <div style={{ display: "flex", gap: "4px" }}>
-            <button type="button" onClick={() => setSortAsc((v) => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑" : "↓"}</button>
+            {canEdit && <button type="button" onClick={() => { setJourneySearchMessage(""); setShowJourneySearch(true); }}>Add</button>}
           </div>
         </div>
         <div className="plain-table history-table">
@@ -747,7 +765,7 @@ export default function UserPage() {
                             <ExternalLink size={13} strokeWidth={1.5} />
                           </button>
                         )}
-                        <button type="button" className="icon-btn" title="Edit" onClick={() => { setEditingJourney(item); setEditDirection((item.direction as "Outbound" | "Inbound") ?? "Outbound"); setEditReason((item.reason as "Leisure" | "Work" | "Life" | "Love") ?? "Leisure"); setEditDetailedReason(item.detailed_reason ?? ""); }}>
+                        <button type="button" className="icon-btn" title="Edit" onClick={() => { setEditJourneyMessage(""); setEditingJourney(item); setEditDirection((item.direction as "Outbound" | "Inbound") ?? "Outbound"); setEditReason((item.reason as "Leisure" | "Work" | "Life" | "Love") ?? "Leisure"); setEditDetailedReason(item.detailed_reason ?? ""); }}>
                           <Pencil size={13} strokeWidth={1.5} />
                         </button>
                         <button type="button" className="icon-btn del-btn" title="Delete" onClick={() => deleteJourney(item.id)}>

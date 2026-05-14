@@ -165,6 +165,7 @@ export default function JourneySearch({
   authHeaders,
   title = "New Journey",
   addLabel = "Add",
+  message = "",
   savedKeys,
   savingId = "",
   onAddCandidate,
@@ -173,8 +174,9 @@ export default function JourneySearch({
   stations: Station[];
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
-  title?: string;
+  title?: string | null;
   addLabel?: string;
+  message?: string;
   savedKeys?: Set<string>;
   savingId?: string;
   onAddCandidate?: (candidate: Candidate, form: SearchForm) => void;
@@ -221,7 +223,7 @@ export default function JourneySearch({
   return (
     <>
       <section className="search-panel">
-        <div className="section-title"><h2>{title}</h2></div>
+        {title && <div className="section-title"><h2>{title}</h2></div>}
         <form className="search-form" onSubmit={search}>
           <label>Date<input type="date" value={form.travelDate} onChange={(e) => setForm({ ...form, travelDate: e.target.value })} /></label>
           <label>From<StationInput stations={stations} value={form.originCrs} onChange={(crs) => setForm({ ...form, originCrs: crs })} /></label>
@@ -232,6 +234,7 @@ export default function JourneySearch({
           <button type="submit" disabled={loading}>{loading ? "Searching" : "Search"}</button>
         </form>
       </section>
+      {message && <div className="message-line journey-search-message" role="status">{message}</div>}
 
       {hasSearched && (
         <section className="table-section">
