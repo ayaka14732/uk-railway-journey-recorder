@@ -22,8 +22,6 @@ export default function JourneyMetaDialog({
   initialDirection = "Outbound",
   initialReason = "Leisure",
   initialDetailedReason = "",
-  primaryLabel,
-  savingLabel,
   onSubmit,
   onClose,
 }: {
@@ -32,8 +30,6 @@ export default function JourneyMetaDialog({
   initialDirection?: Direction;
   initialReason?: Reason;
   initialDetailedReason?: string;
-  primaryLabel: string;
-  savingLabel?: string;
   onSubmit: (values: JourneyMetaValues) => void | Promise<void>;
   onClose: () => void;
 }) {
@@ -86,7 +82,7 @@ export default function JourneyMetaDialog({
           </div>
         </div>
         <div className="token-dialog-actions">
-          <button type="button" onClick={submit} disabled={saving}>{saving ? savingLabel ?? primaryLabel : primaryLabel}</button>
+          <button type="button" onClick={submit} disabled={saving}>{saving ? "Saving…" : "Save"}</button>
           <button type="button" onClick={onClose}>Cancel</button>
         </div>
       </div>

@@ -57,8 +57,6 @@ export default function AddJourneyDialog({
     <JourneyMetaDialog
       title="Add Journey"
       stacked
-      primaryLabel="Add to history"
-      savingLabel="Adding…"
       onSubmit={addJourney}
       onClose={onClose}
     />

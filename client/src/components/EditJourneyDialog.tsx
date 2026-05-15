@@ -43,7 +43,6 @@ export default function EditJourneyDialog({
       initialDirection={initDirection}
       initialReason={initReason}
       initialDetailedReason={initDetailedReason}
-      primaryLabel="Save"
       onSubmit={save}
       onClose={onClose}
     />
