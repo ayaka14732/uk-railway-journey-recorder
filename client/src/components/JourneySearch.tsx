@@ -163,7 +163,6 @@ export default function JourneySearch({
   stations,
   rttCookie,
   authHeaders,
-  title = "New Journey",
   addLabel = "Add",
   message = "",
   savedKeys,
@@ -174,7 +173,6 @@ export default function JourneySearch({
   stations: Station[];
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
-  title?: string | null;
   addLabel?: string;
   message?: string;
   savedKeys?: Set<string>;
@@ -223,7 +221,6 @@ export default function JourneySearch({
   return (
     <>
       <section className="search-panel">
-        {title && <div className="section-title"><h2>{title}</h2></div>}
         <form className="search-form" onSubmit={search}>
           <label>Date<input type="date" value={form.travelDate} onChange={(e) => setForm({ ...form, travelDate: e.target.value })} /></label>
           <label>From<StationInput stations={stations} value={form.originCrs} onChange={(crs) => setForm({ ...form, originCrs: crs })} /></label>

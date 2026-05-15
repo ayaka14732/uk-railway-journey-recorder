@@ -29,7 +29,6 @@ export default function NewJourneyDialog({
           stations={stations}
           rttCookie={rttCookie}
           authHeaders={authHeaders}
-          title={null}
           message={message}
           savedKeys={savedKeys}
           onMessage={setMessage}

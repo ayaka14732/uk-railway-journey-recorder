@@ -80,7 +80,6 @@ export default function SearchPage() {
       )}
 
       <JourneySearch
-        title="Search"
         stations={stations}
         rttCookie={rttCookie}
         authHeaders={authHeaders}
