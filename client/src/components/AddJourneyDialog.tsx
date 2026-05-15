@@ -1,9 +1,6 @@
-import { useState } from "react";
 import { apiJson } from "@/lib/api";
 import JourneyMetaDialog, { type Direction, type Reason } from "@/components/JourneyMetaDialog";
 import { type Candidate, type SearchForm } from "@/components/JourneySearch";
-
-const DETAIL_MAX_CHARS = 45;
 
 type JourneyDetail = {
   travelDate: string;
@@ -22,10 +19,6 @@ type JourneyDetail = {
   url?: string;
 };
 
-function limitDetail(value: string): string {
-  return Array.from(value).slice(0, DETAIL_MAX_CHARS).join("");
-}
-
 export default function AddJourneyDialog({
   candidate,
   searchForm,
@@ -41,11 +34,7 @@ export default function AddJourneyDialog({
   onClose: () => void;
   onAdded: (savedKey: string, journeyId: number | null, detail: JourneyDetail, direction: Direction, reason: Reason, detailedReason: string) => void;
 }) {
-  const [direction, setDirection] = useState<Direction>("Outbound");
-  const [reason, setReason] = useState<Reason>("Leisure");
-  const [detailedReason, setDetailedReason] = useState("");
-
-  async function addJourney() {
+  async function addJourney({ direction, reason, detailedReason }: { direction: Direction; reason: Reason; detailedReason: string }) {
     const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
       method: "POST",
       headers: { "X-RTT-Cookie": rttCookie, ...(authHeaders?.() ?? {}) },
@@ -68,14 +57,8 @@ export default function AddJourneyDialog({
     <JourneyMetaDialog
       title="Add Journey"
       stacked
-      direction={direction}
-      reason={reason}
-      detailedReason={detailedReason}
       primaryLabel="Add to history"
       savingLabel="Adding…"
-      onDirectionChange={setDirection}
-      onReasonChange={setReason}
-      onDetailedReasonChange={(value) => setDetailedReason(limitDetail(value))}
       onSubmit={addJourney}
       onClose={onClose}
     />

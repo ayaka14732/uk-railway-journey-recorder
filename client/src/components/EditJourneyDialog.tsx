@@ -1,8 +1,5 @@
-import { useState } from "react";
 import { apiJson } from "@/lib/api";
 import JourneyMetaDialog, { type Direction, type Reason } from "@/components/JourneyMetaDialog";
-
-const DETAIL_MAX_CHARS = 45;
 
 export type EditableJourney = {
   id: number;
@@ -10,10 +7,6 @@ export type EditableJourney = {
   reason?: Reason;
   detailed_reason?: string;
 };
-
-function limitDetail(value: string): string {
-  return Array.from(value).slice(0, DETAIL_MAX_CHARS).join("");
-}
 
 export default function EditJourneyDialog({
   journey,
@@ -26,11 +19,7 @@ export default function EditJourneyDialog({
   onClose: () => void;
   onSaved: (id: number, direction: Direction, reason: Reason, detailedReason: string) => void;
 }) {
-  const [direction, setDirection] = useState<Direction>(() => journey.direction ?? "Outbound");
-  const [reason, setReason] = useState<Reason>(() => journey.reason ?? "Leisure");
-  const [detailedReason, setDetailedReason] = useState(journey.detailed_reason ?? "");
-
-  async function save() {
+  async function save({ direction, reason, detailedReason }: { direction: Direction; reason: Reason; detailedReason: string }) {
     await apiJson(`/api/journeys/${journey.id}`, {
       method: "PATCH",
       headers: authHeaders?.() ?? {},
@@ -42,13 +31,10 @@ export default function EditJourneyDialog({
   return (
     <JourneyMetaDialog
       title="Edit Journey"
-      direction={direction}
-      reason={reason}
-      detailedReason={detailedReason}
+      initialDirection={journey.direction ?? "Outbound"}
+      initialReason={journey.reason ?? "Leisure"}
+      initialDetailedReason={journey.detailed_reason ?? ""}
       primaryLabel="Save"
-      onDirectionChange={setDirection}
-      onReasonChange={setReason}
-      onDetailedReasonChange={(value) => setDetailedReason(limitDetail(value))}
       onSubmit={save}
       onClose={onClose}
     />

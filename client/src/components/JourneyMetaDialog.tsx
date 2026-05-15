@@ -2,37 +2,39 @@ import { useState } from "react";
 
 const DIRECTIONS = ["Outbound", "Inbound"] as const;
 const REASONS = ["Leisure", "Work", "Life", "Love"] as const;
+const DETAIL_MAX_CHARS = 45;
 
 export type Direction = typeof DIRECTIONS[number];
 export type Reason = typeof REASONS[number];
 
+function limitDetail(value: string): string {
+  return Array.from(value).slice(0, DETAIL_MAX_CHARS).join("");
+}
+
 export default function JourneyMetaDialog({
   title,
   stacked = false,
-  direction,
-  reason,
-  detailedReason,
+  initialDirection = "Outbound",
+  initialReason = "Leisure",
+  initialDetailedReason = "",
   primaryLabel,
   savingLabel,
-  onDirectionChange,
-  onReasonChange,
-  onDetailedReasonChange,
   onSubmit,
   onClose,
 }: {
   title: string;
   stacked?: boolean;
-  direction: Direction;
-  reason: Reason;
-  detailedReason: string;
+  initialDirection?: Direction;
+  initialReason?: Reason;
+  initialDetailedReason?: string;
   primaryLabel: string;
   savingLabel?: string;
-  onDirectionChange: (direction: Direction) => void;
-  onReasonChange: (reason: Reason) => void;
-  onDetailedReasonChange: (detail: string) => void;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (values: { direction: Direction; reason: Reason; detailedReason: string }) => void | Promise<void>;
   onClose: () => void;
 }) {
+  const [direction, setDirection] = useState<Direction>(() => initialDirection);
+  const [reason, setReason] = useState<Reason>(() => initialReason);
+  const [detailedReason, setDetailedReason] = useState(initialDetailedReason);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -40,7 +42,7 @@ export default function JourneyMetaDialog({
     setSaving(true);
     setMessage("");
     try {
-      await onSubmit();
+      await onSubmit({ direction, reason, detailedReason });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -61,7 +63,7 @@ export default function JourneyMetaDialog({
             <span>Direction</span>
             <div className="add-dialog-options">
               {DIRECTIONS.map((d) => (
-                <button type="button" key={d} className={`add-dialog-option${direction === d ? " selected" : ""}`} onClick={() => onDirectionChange(d)}>{d}</button>
+                <button type="button" key={d} className={`add-dialog-option${direction === d ? " selected" : ""}`} onClick={() => setDirection(d)}>{d}</button>
               ))}
             </div>
           </div>
@@ -69,13 +71,13 @@ export default function JourneyMetaDialog({
             <span>Reason</span>
             <div className="add-dialog-options">
               {REASONS.map((r) => (
-                <button type="button" key={r} className={`add-dialog-option${reason === r ? " selected" : ""}`} onClick={() => onReasonChange(r)}>{r}</button>
+                <button type="button" key={r} className={`add-dialog-option${reason === r ? " selected" : ""}`} onClick={() => setReason(r)}>{r}</button>
               ))}
             </div>
           </div>
           <div className="add-dialog-field">
             <span>Detail</span>
-            <input type="text" name="journey-detail-note" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} data-lpignore="true" data-1p-ignore="true" data-bwignore="true" className="add-dialog-input" value={detailedReason} onChange={(e) => onDetailedReasonChange(e.target.value)} placeholder="Note" />
+            <input type="text" name="journey-detail-note" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} data-lpignore="true" data-1p-ignore="true" data-bwignore="true" className="add-dialog-input" value={detailedReason} onChange={(e) => setDetailedReason(limitDetail(e.target.value))} placeholder="Note" />
           </div>
         </div>
         <div className="token-dialog-actions">
