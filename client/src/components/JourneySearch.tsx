@@ -163,7 +163,6 @@ export default function JourneySearch({
   stations,
   rttCookie,
   authHeaders,
-  addLabel = "Add",
   savedKeys,
   savingId = "",
   onAddCandidate,
@@ -171,7 +170,6 @@ export default function JourneySearch({
   stations: Station[];
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
-  addLabel?: string;
   savedKeys?: Set<string>;
   savingId?: string;
   onAddCandidate?: (candidate: Candidate, form: SearchForm) => void;
@@ -265,7 +263,7 @@ export default function JourneySearch({
                             </button>
                           )}
                           {onAddCandidate && (
-                            <button type="button" className="icon-btn" title={saved ? "Already added" : savingId === candidate.identity ? "Adding" : addLabel} onClick={() => onAddCandidate(candidate, form)} disabled={savingId === candidate.identity || saved}>
+                            <button type="button" className="icon-btn" title={saved ? "Already added" : savingId === candidate.identity ? "Adding" : "Add"} onClick={() => onAddCandidate(candidate, form)} disabled={savingId === candidate.identity || saved}>
                               {saved ? (
                                 <Check size={13} strokeWidth={1.5} />
                               ) : (
