@@ -35,6 +35,7 @@ export default function AddJourneyDialog({
   onAdded: (savedKey: string, journeyId: number | null, detail: JourneyDetail, values: JourneyMetaValues) => void;
 }) {
   async function addJourney(values: JourneyMetaValues) {
+    const savedKey = `${candidate.identity}-${candidate.departureDate}`;
     const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
       method: "POST",
       headers: { "X-RTT-Cookie": rttCookie, ...(authHeaders?.() ?? {}) },
@@ -50,7 +51,7 @@ export default function AddJourneyDialog({
         detailedReason: values.detailedReason,
       }),
     });
-    onAdded(`${candidate.identity}-${candidate.departureDate}`, data.journeyId, data.detail, values);
+    onAdded(savedKey, data.journeyId, data.detail, values);
   }
 
   return (
