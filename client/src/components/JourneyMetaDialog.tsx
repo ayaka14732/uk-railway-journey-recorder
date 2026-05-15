@@ -12,7 +12,6 @@ export default function JourneyMetaDialog({
   reason,
   detailedReason,
   primaryLabel,
-  secondaryLabel = "Cancel",
   saving = false,
   savingLabel,
   onDirectionChange,
@@ -28,7 +27,6 @@ export default function JourneyMetaDialog({
   reason: Reason;
   detailedReason: string;
   primaryLabel: string;
-  secondaryLabel?: string;
   saving?: boolean;
   savingLabel?: string;
   onDirectionChange: (direction: Direction) => void;
@@ -69,7 +67,7 @@ export default function JourneyMetaDialog({
         </div>
         <div className="token-dialog-actions">
           <button type="button" onClick={onSubmit} disabled={saving}>{saving ? savingLabel ?? primaryLabel : primaryLabel}</button>
-          <button type="button" onClick={onClose}>{secondaryLabel}</button>
+          <button type="button" onClick={onClose}>Cancel</button>
         </div>
       </div>
     </div>
