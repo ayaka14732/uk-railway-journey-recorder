@@ -19,11 +19,26 @@ export default function EditJourneyDialog({
   onClose: () => void;
   onSaved: (id: number, values: JourneyMetaValues) => void;
 }) {
+  const initialValues: JourneyMetaValues = {
+    direction: journey.direction ?? "Outbound",
+    reason: journey.reason ?? "Leisure",
+    detailedReason: journey.detailed_reason ?? "",
+  };
+
   async function save(values: JourneyMetaValues) {
+    const body: {
+      direction?: JourneyMetaValues["direction"];
+      reason?: JourneyMetaValues["reason"];
+      detailed_reason?: string;
+    } = {};
+    if (values.direction !== initialValues.direction) body.direction = values.direction;
+    if (values.reason !== initialValues.reason) body.reason = values.reason;
+    if (values.detailedReason !== initialValues.detailedReason) body.detailed_reason = values.detailedReason;
+
     await apiJson(`/api/journeys/${journey.id}`, {
       method: "PATCH",
       headers: authHeaders?.() ?? {},
-      body: JSON.stringify({ direction: values.direction, reason: values.reason, detailed_reason: values.detailedReason }),
+      body: JSON.stringify(body),
     });
     onSaved(journey.id, values);
   }
@@ -31,9 +46,9 @@ export default function EditJourneyDialog({
   return (
     <JourneyMetaDialog
       title="Edit Journey"
-      initialDirection={journey.direction ?? "Outbound"}
-      initialReason={journey.reason ?? "Leisure"}
-      initialDetailedReason={journey.detailed_reason ?? ""}
+      initialDirection={initialValues.direction}
+      initialReason={initialValues.reason}
+      initialDetailedReason={initialValues.detailedReason}
       primaryLabel="Save"
       onSubmit={save}
       onClose={onClose}

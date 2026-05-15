@@ -498,10 +498,21 @@ def update_journey(
     body: UpdateJourneyRequest,
     user_id: int = Depends(get_current_user),
 ) -> dict[str, Any]:
+    field_map = {
+        "direction": "direction",
+        "reason": "reason",
+        "detailed_reason": "detailed_reason",
+    }
+    updates = [(field_map[field], getattr(body, field)) for field in body.model_fields_set if field in field_map]
+    if not updates:
+        return {"updated": journey_id}
+
+    assignments = ", ".join(f"{column} = ?" for column, _ in updates)
+    values = [value for _, value in updates]
     with sqlite3.connect(DB_PATH) as conn:
         result = conn.execute(
-            "UPDATE journeys SET direction = ?, reason = ?, detailed_reason = ? WHERE id = ? AND user_id = ?",
-            (body.direction, body.reason, body.detailed_reason, journey_id, user_id),
+            f"UPDATE journeys SET {assignments} WHERE id = ? AND user_id = ?",
+            (*values, journey_id, user_id),
         )
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Journey not found")
