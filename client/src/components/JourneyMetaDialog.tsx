@@ -1,5 +1,5 @@
-type Direction = "Outbound" | "Inbound";
-type Reason = "Leisure" | "Work" | "Life" | "Love";
+export type Direction = "Outbound" | "Inbound";
+export type Reason = "Leisure" | "Work" | "Life" | "Love";
 
 const DIRECTIONS: Direction[] = ["Outbound", "Inbound"];
 const REASONS: Reason[] = ["Leisure", "Work", "Life", "Love"];

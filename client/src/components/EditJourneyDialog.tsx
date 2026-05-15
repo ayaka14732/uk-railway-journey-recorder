@@ -1,29 +1,18 @@
 import { useState } from "react";
 import { apiJson } from "@/lib/api";
-import JourneyMetaDialog from "@/components/JourneyMetaDialog";
+import JourneyMetaDialog, { type Direction, type Reason } from "@/components/JourneyMetaDialog";
 
 const DETAIL_MAX_CHARS = 45;
 
-type Direction = "Outbound" | "Inbound";
-type Reason = "Leisure" | "Work" | "Life" | "Love";
-
 type EditableJourney = {
   id: number;
-  direction?: string;
-  reason?: string;
+  direction?: Direction;
+  reason?: Reason;
   detailed_reason?: string;
 };
 
 function limitDetail(value: string): string {
   return Array.from(value).slice(0, DETAIL_MAX_CHARS).join("");
-}
-
-function normaliseDirection(value?: string): Direction {
-  return value === "Inbound" ? "Inbound" : "Outbound";
-}
-
-function normaliseReason(value?: string): Reason {
-  return value === "Work" || value === "Life" || value === "Love" ? value : "Leisure";
 }
 
 export default function EditJourneyDialog({
@@ -37,8 +26,8 @@ export default function EditJourneyDialog({
   onClose: () => void;
   onSaved: (id: number, direction: Direction, reason: Reason, detailedReason: string) => void;
 }) {
-  const [direction, setDirection] = useState<Direction>(() => normaliseDirection(journey.direction));
-  const [reason, setReason] = useState<Reason>(() => normaliseReason(journey.reason));
+  const [direction, setDirection] = useState<Direction>(() => journey.direction ?? "Outbound");
+  const [reason, setReason] = useState<Reason>(() => journey.reason ?? "Leisure");
   const [detailedReason, setDetailedReason] = useState(journey.detailed_reason ?? "");
   const [message, setMessage] = useState("");
 

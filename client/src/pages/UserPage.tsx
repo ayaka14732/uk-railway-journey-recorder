@@ -14,6 +14,7 @@ import { isValidUsername } from "@/lib/username";
 import AddJourneyDialog from "@/components/AddJourneyDialog";
 import AnchoredTooltip from "@/components/AnchoredTooltip";
 import EditJourneyDialog from "@/components/EditJourneyDialog";
+import { type Direction, type Reason } from "@/components/JourneyMetaDialog";
 import { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
 import NewJourneyDialog from "@/components/NewJourneyDialog";
 import NotFound from "./NotFound";
@@ -36,8 +37,8 @@ type StoredJourney = {
   planned_arrival?: string;
   arrival_lateness_minutes?: number | null;
   platform_arrival?: string | null;
-  direction?: string;
-  reason?: string;
+  direction?: Direction;
+  reason?: Reason;
   detailed_reason?: string;
 };
 

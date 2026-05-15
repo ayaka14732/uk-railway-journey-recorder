@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { apiJson } from "@/lib/api";
-import JourneyMetaDialog from "@/components/JourneyMetaDialog";
+import JourneyMetaDialog, { type Direction, type Reason } from "@/components/JourneyMetaDialog";
 import { type Candidate, type SearchForm } from "@/components/JourneySearch";
 
 const DETAIL_MAX_CHARS = 45;
@@ -39,10 +39,10 @@ export default function AddJourneyDialog({
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
   onClose: () => void;
-  onAdded: (savedKey: string, journeyId: number | null, detail: JourneyDetail, direction: string, reason: string, detailedReason: string) => void;
+  onAdded: (savedKey: string, journeyId: number | null, detail: JourneyDetail, direction: Direction, reason: Reason, detailedReason: string) => void;
 }) {
-  const [direction, setDirection] = useState<"Outbound" | "Inbound">("Outbound");
-  const [reason, setReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
+  const [direction, setDirection] = useState<Direction>("Outbound");
+  const [reason, setReason] = useState<Reason>("Leisure");
   const [detailedReason, setDetailedReason] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
