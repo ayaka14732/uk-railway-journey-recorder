@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 const DIRECTIONS = ["Outbound", "Inbound"] as const;
 const REASONS = ["Leisure", "Work", "Life", "Love"] as const;
 
@@ -6,13 +8,11 @@ export type Reason = typeof REASONS[number];
 
 export default function JourneyMetaDialog({
   title,
-  message = "",
   stacked = false,
   direction,
   reason,
   detailedReason,
   primaryLabel,
-  saving = false,
   savingLabel,
   onDirectionChange,
   onReasonChange,
@@ -21,20 +21,33 @@ export default function JourneyMetaDialog({
   onClose,
 }: {
   title: string;
-  message?: string;
   stacked?: boolean;
   direction: Direction;
   reason: Reason;
   detailedReason: string;
   primaryLabel: string;
-  saving?: boolean;
   savingLabel?: string;
   onDirectionChange: (direction: Direction) => void;
   onReasonChange: (reason: Reason) => void;
   onDetailedReasonChange: (detail: string) => void;
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<void>;
   onClose: () => void;
 }) {
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    setSaving(true);
+    setMessage("");
+    try {
+      await onSubmit();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className={`token-overlay${stacked ? " stacked-overlay" : ""}`} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="token-dialog">
@@ -66,7 +79,7 @@ export default function JourneyMetaDialog({
           </div>
         </div>
         <div className="token-dialog-actions">
-          <button type="button" onClick={onSubmit} disabled={saving}>{saving ? savingLabel ?? primaryLabel : primaryLabel}</button>
+          <button type="button" onClick={submit} disabled={saving}>{saving ? savingLabel ?? primaryLabel : primaryLabel}</button>
           <button type="button" onClick={onClose}>Cancel</button>
         </div>
       </div>

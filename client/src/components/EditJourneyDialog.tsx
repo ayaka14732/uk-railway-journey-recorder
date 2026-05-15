@@ -29,26 +29,19 @@ export default function EditJourneyDialog({
   const [direction, setDirection] = useState<Direction>(() => journey.direction);
   const [reason, setReason] = useState<Reason>(() => journey.reason);
   const [detailedReason, setDetailedReason] = useState(journey.detailed_reason ?? "");
-  const [message, setMessage] = useState("");
 
   async function save() {
-    setMessage("");
-    try {
-      await apiJson(`/api/journeys/${journey.id}`, {
-        method: "PATCH",
-        headers: authHeaders?.() ?? {},
-        body: JSON.stringify({ direction, reason, detailed_reason: detailedReason }),
-      });
-      onSaved(journey.id, direction, reason, detailedReason);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
-    }
+    await apiJson(`/api/journeys/${journey.id}`, {
+      method: "PATCH",
+      headers: authHeaders?.() ?? {},
+      body: JSON.stringify({ direction, reason, detailed_reason: detailedReason }),
+    });
+    onSaved(journey.id, direction, reason, detailedReason);
   }
 
   return (
     <JourneyMetaDialog
       title="Edit Journey"
-      message={message}
       direction={direction}
       reason={reason}
       detailedReason={detailedReason}
