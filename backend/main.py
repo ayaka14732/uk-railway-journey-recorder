@@ -135,7 +135,6 @@ class ResolveRequest(BaseModel):
     destinationCrs: str = Field(..., min_length=2, max_length=8)
     identity: str = Field(..., min_length=2)
     departureDate: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
-    save: bool = False
     direction: Direction | None = None
     reason: Reason | None = None
     detailedReason: str | None = Field(None, max_length=45)
@@ -486,9 +485,7 @@ def resolve_service(
     )
     detail["travelDate"] = request.travelDate
 
-    saved_id: int | None = None
-    if request.save:
-        saved_id = save_journey(detail, request.direction, request.reason, request.detailedReason, user_id)
+    saved_id = save_journey(detail, request.direction, request.reason, request.detailedReason, user_id)
     return {"journeyId": saved_id, "detail": detail}
 
 

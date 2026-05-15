@@ -45,7 +45,6 @@ export default function AddJourneyDialog({
         destinationCrs: searchForm.destinationCrs.toUpperCase(),
         identity: candidate.identity,
         departureDate: candidate.departureDate || searchForm.travelDate,
-        save: true,
         direction: values.direction,
         reason: values.reason,
         detailedReason: values.detailedReason,
