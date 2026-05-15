@@ -12,7 +12,7 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, Literal
 
 import bcrypt
 import jwt as pyjwt
@@ -82,7 +82,7 @@ def configure_uvicorn_access_logging() -> None:
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_http_bearer_optional),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_http_bearer_optional),
 ) -> int:
     if not credentials:
         raise HTTPException(status_code=401, detail="Authorization required")
@@ -97,8 +97,8 @@ def get_current_user(
 
 
 def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_http_bearer_optional),
-) -> Optional[int]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(_http_bearer_optional),
+) -> int | None:
     if not credentials:
         return None
     try:
@@ -136,15 +136,15 @@ class ResolveRequest(BaseModel):
     identity: str = Field(..., min_length=2)
     departureDate: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     save: bool = False
-    direction: Optional[Direction] = None
-    reason: Optional[Reason] = None
-    detailedReason: Optional[str] = Field(None, max_length=45)
+    direction: Direction | None = None
+    reason: Reason | None = None
+    detailedReason: str | None = Field(None, max_length=45)
 
 
 class UpdateJourneyRequest(BaseModel):
-    direction: Optional[Direction] = None
-    reason: Optional[Reason] = None
-    detailed_reason: Optional[str] = Field(None, max_length=45)
+    direction: Direction | None = None
+    reason: Reason | None = None
+    detailed_reason: str | None = Field(None, max_length=45)
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -175,7 +175,7 @@ def startup() -> None:
 
 # ── RTT website scraping ──────────────────────────────────────────────────────
 
-def get_rtt_cookie(x_rtt_cookie: Annotated[Optional[str], Header()] = None) -> str:
+def get_rtt_cookie(x_rtt_cookie: Annotated[str | None, Header()] = None) -> str:
     return x_rtt_cookie or ""
 
 
@@ -338,9 +338,9 @@ def scrape_service_page(
 
 def save_journey(
     detail: dict[str, Any],
-    direction: Optional[str],
-    reason: Optional[str],
-    detailed_reason: Optional[str],
+    direction: str | None,
+    reason: str | None,
+    detailed_reason: str | None,
     user_id: int,
 ) -> int:
     with sqlite3.connect(DB_PATH) as conn:
@@ -527,7 +527,7 @@ def delete_journey(
 def list_journeys(
     limit: int = Query(default=20, ge=1, le=800),
     username: str = Query(..., pattern=r"^[a-z][a-z0-9]+$"),
-    requesting_user_id: Optional[int] = Depends(get_optional_user),
+    requesting_user_id: int | None = Depends(get_optional_user),
 ) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
