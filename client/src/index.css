@@ -232,6 +232,10 @@ body {
   z-index: 100;
 }
 
+.stacked-overlay {
+  z-index: 110;
+}
+
 .token-dialog.stats-dialog {
   width: 96vw;
   max-height: 92vh;
@@ -247,6 +251,30 @@ body {
 
 .token-dialog.options-dialog {
   width: min(520px, 92vw);
+}
+
+.token-dialog.journey-search-dialog {
+  width: min(1180px, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.journey-search-dialog .search-panel {
+  margin: 12px 12px 10px;
+}
+
+.journey-search-dialog .table-section {
+  margin: 0 12px 12px;
+  overflow: auto;
+}
+
+.journey-search-dialog .journey-search-message {
+  margin: 0 12px 10px;
+}
+
+.dialog-message {
+  margin: 10px 12px 0;
 }
 
 .options-body {
@@ -624,7 +652,6 @@ body {
   border: none;
   background: transparent;
   color: #888888;
-  font-size: 16px;
   cursor: pointer;
   padding: 0;
   border-right: 1px solid var(--sbb-line);
@@ -920,7 +947,6 @@ body {
     border-bottom: 1px solid var(--sbb-line);
     width: 100%;
     min-height: 30px;
-    font-size: 18px;
   }
 
   .search-form button {

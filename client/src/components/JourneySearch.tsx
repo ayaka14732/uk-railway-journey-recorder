@@ -163,25 +163,20 @@ export default function JourneySearch({
   stations,
   rttCookie,
   authHeaders,
-  title = "New Journey",
-  addLabel = "Add",
   savedKeys,
   savingId = "",
   onAddCandidate,
-  onMessage,
 }: {
   stations: Station[];
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
-  title?: string;
-  addLabel?: string;
   savedKeys?: Set<string>;
   savingId?: string;
   onAddCandidate?: (candidate: Candidate, form: SearchForm) => void;
-  onMessage?: (message: string) => void;
 }) {
   const [form, setForm] = useState<SearchForm>(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const stationMap = useMemo(() => new Map(stations.map((s) => [s.crs, s.name])), [stations]);
@@ -197,22 +192,18 @@ export default function JourneySearch({
     event.preventDefault();
     setLoading(true);
     setHasSearched(false);
-    onMessage?.("");
+    setMessage("");
     setCandidates([]);
     try {
       const data = await apiJson<{ candidates: Candidate[] }>("/api/search-services", {
         method: "POST",
         headers: { "X-RTT-Cookie": rttCookie, ...(authHeaders?.() ?? {}) },
-        body: JSON.stringify({
-          ...form,
-          originCrs: form.originCrs.toUpperCase(),
-          destinationCrs: form.destinationCrs.toUpperCase(),
-        }),
+        body: JSON.stringify(form),
       });
       setCandidates(data.candidates);
       setHasSearched(true);
     } catch (error) {
-      onMessage?.(error instanceof Error ? error.message : String(error));
+      setMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setLoading(false);
     }
@@ -221,7 +212,6 @@ export default function JourneySearch({
   return (
     <>
       <section className="search-panel">
-        <div className="section-title"><h2>{title}</h2></div>
         <form className="search-form" onSubmit={search}>
           <label>Date<input type="date" value={form.travelDate} onChange={(e) => setForm({ ...form, travelDate: e.target.value })} /></label>
           <label>From<StationInput stations={stations} value={form.originCrs} onChange={(crs) => setForm({ ...form, originCrs: crs })} /></label>
@@ -232,6 +222,7 @@ export default function JourneySearch({
           <button type="submit" disabled={loading}>{loading ? "Searching" : "Search"}</button>
         </form>
       </section>
+      {message && <div className="message-line journey-search-message" role="status">{message}</div>}
 
       {hasSearched && (
         <section className="table-section">
@@ -268,7 +259,7 @@ export default function JourneySearch({
                             </button>
                           )}
                           {onAddCandidate && (
-                            <button type="button" className="icon-btn" title={saved ? "Already added" : savingId === candidate.identity ? "Adding" : addLabel} onClick={() => onAddCandidate(candidate, form)} disabled={savingId === candidate.identity || saved}>
+                            <button type="button" className="icon-btn" title={saved ? "Already added" : savingId === candidate.identity ? "Adding" : "Add"} onClick={() => onAddCandidate(candidate, form)} disabled={savingId === candidate.identity || saved}>
                               {saved ? (
                                 <Check size={13} strokeWidth={1.5} />
                               ) : (

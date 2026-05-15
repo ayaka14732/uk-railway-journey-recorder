@@ -11,30 +11,21 @@ import { OPERATOR_COLORS, OPERATOR_DETAILS, OPERATOR_NAMES, OperatorBadge, norma
 import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
+import AddJourneyDialog from "@/components/AddJourneyDialog";
 import AnchoredTooltip from "@/components/AnchoredTooltip";
-import JourneySearch, { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
+import EditJourneyDialog, { type EditableJourney } from "@/components/EditJourneyDialog";
+import { type Direction, type Reason } from "@/components/JourneyMetaDialog";
+import { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
+import NewJourneyDialog from "@/components/NewJourneyDialog";
 import NotFound from "./NotFound";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-type JourneyDetail = {
-  identity?: string;
-  departureDate?: string;
-  operatorName?: string;
-  serviceOriginCrs?: string;
-  serviceDestinationCrs?: string;
-  boarded: { crs: string; name: string };
-  alighted: { crs: string; name: string };
-  plannedDeparture?: string;
-  departureLatenessMinutes?: number | null;
-  plannedArrival?: string;
-  arrivalLatenessMinutes?: number | null;
-};
-
 type StoredJourney = {
   id: number;
   travel_date: string;
+  departure_date?: string;
   boarded_crs: string;
   alighted_crs: string;
   url?: string;
@@ -47,8 +38,8 @@ type StoredJourney = {
   planned_arrival?: string;
   arrival_lateness_minutes?: number | null;
   platform_arrival?: string | null;
-  direction?: string;
-  reason?: string;
+  direction?: Direction;
+  reason?: Reason;
   detailed_reason?: string;
 };
 
@@ -58,12 +49,6 @@ type PendingAdd = {
 };
 
 const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
-
-const DETAIL_MAX_CHARS = 45;
-
-function limitDetail(value: string): string {
-  return Array.from(value).slice(0, DETAIL_MAX_CHARS).join("");
-}
 
 function delayText(value?: number | null) {
   if (value === null || value === undefined) return "—";
@@ -121,7 +106,6 @@ export default function UserPage() {
     setShowTokenDialog(false);
   }
 
-  const [savingId, setSavingId] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [history, setHistory] = useState<StoredJourney[]>([]);
   const [sortAsc, setSortAsc] = useState(false);
@@ -130,6 +114,7 @@ export default function UserPage() {
   const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
 
   const [notFound, setNotFound] = useState(false);
+  const [showJourneySearch, setShowJourneySearch] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -137,13 +122,7 @@ export default function UserPage() {
   const [hideHistoryAfterEnabled, setHideHistoryAfterEnabled] = useState(() => localStorage.getItem("hide_history_after_enabled") === "1" || !!localStorage.getItem("hide_history_after_date"));
   const [hideHistoryAfterDate, setHideHistoryAfterDate] = useState(() => localStorage.getItem("hide_history_after_date") ?? "");
   const mapRef = useRef<HTMLDivElement>(null);
-  const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
-  const [addReason, setAddReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
-  const [addDetailedReason, setAddDetailedReason] = useState<string>("");
-  const [editingJourney, setEditingJourney] = useState<StoredJourney | null>(null);
-  const [editDirection, setEditDirection] = useState<"Outbound" | "Inbound">("Outbound");
-  const [editReason, setEditReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
-  const [editDetailedReason, setEditDetailedReason] = useState<string>("");
+  const [editingJourney, setEditingJourney] = useState<EditableJourney | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
 
   const stationMap = useMemo(() => new Map(stations.map((s) => [s.crs, s.name])), [stations]);
@@ -268,21 +247,8 @@ export default function UserPage() {
     }
   }
 
-  async function updateJourney(id: number, direction: string, reason: string, detailedReason: string) {
-    try {
-      await apiJson(`/api/journeys/${id}`, {
-        method: "PATCH",
-        headers: authHeaders(),
-        body: JSON.stringify({ direction, reason, detailed_reason: detailedReason }),
-      });
-      setHistory((prev) => prev.map((j) => j.id === id ? { ...j, direction, reason, detailed_reason: detailedReason } : j));
-      setEditingJourney(null);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
-    }
-  }
-
   async function deleteJourney(id: number) {
+    setMessage("");
     try {
       await apiJson(`/api/journeys/${id}`, { method: "DELETE", headers: authHeaders() });
       setHistory((prev) => prev.filter((j) => j.id !== id));
@@ -293,38 +259,6 @@ export default function UserPage() {
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  async function addJourney(candidate: Candidate, searchForm: SearchForm, direction: string, reason: string, detailedReason: string) {
-    setSavingId(candidate.identity);
-    setPendingAdd(null);
-    setMessage("");
-    try {
-      const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
-        method: "POST",
-        headers: { "X-RTT-Cookie": rttCookie, ...authHeaders() },
-        body: JSON.stringify({
-          travelDate: searchForm.travelDate,
-          originCrs: searchForm.originCrs.toUpperCase(),
-          destinationCrs: searchForm.destinationCrs.toUpperCase(),
-          identity: candidate.identity,
-          departureDate: candidate.departureDate || searchForm.travelDate,
-          save: true,
-          direction,
-          reason,
-          detailedReason,
-        }),
-      });
-      const savedKey = `${candidate.identity}-${candidate.departureDate}`;
-      setSavedKeys((prev) => new Set(prev).add(savedKey));
-      if (data.journeyId !== null) savedKeyById.current.set(data.journeyId!, savedKey);
-      setMessage(`Added ${data.detail.identity || candidate.identity} to journey history.`);
-      await loadHistory();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSavingId("");
     }
   }
 
@@ -430,79 +364,53 @@ export default function UserPage() {
       )}
 
       {canEdit && pendingAdd && (
-        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPendingAdd(null); }}>
-          <div className="token-dialog">
-            <div className="token-dialog-header">
-              <span>Add Journey — {pendingAdd.candidate.trainReportingIdentity || pendingAdd.candidate.identity}</span>
-              <button type="button" className="token-dialog-close" onClick={() => setPendingAdd(null)}>×</button>
-            </div>
-            <div className="add-dialog-body">
-              <div className="add-dialog-field">
-                <span>Direction</span>
-                <div className="add-dialog-options">
-                  {(["Outbound", "Inbound"] as const).map((d) => (
-                    <button type="button" key={d} className={`add-dialog-option${addDirection === d ? " selected" : ""}`} onClick={() => setAddDirection(d)}>{d}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="add-dialog-field">
-                <span>Reason</span>
-                <div className="add-dialog-options">
-                  {(["Leisure", "Work", "Life", "Love"] as const).map((r) => (
-                    <button type="button" key={r} className={`add-dialog-option${addReason === r ? " selected" : ""}`} onClick={() => setAddReason(r)}>{r}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="add-dialog-field">
-                <span>Detail</span>
-                <input type="text" name="journey-detail-note" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} data-lpignore="true" data-1p-ignore="true" data-bwignore="true" className="add-dialog-input" value={addDetailedReason} onChange={(e) => setAddDetailedReason(limitDetail(e.target.value))} placeholder="Note" />
-              </div>
-            </div>
-            <div className="token-dialog-actions">
-              <button type="button" onClick={() => addJourney(pendingAdd.candidate, pendingAdd.searchForm, addDirection, addReason, addDetailedReason)} disabled={savingId === pendingAdd.candidate.identity}>
-                {savingId === pendingAdd.candidate.identity ? "Adding…" : "Add to history"}
-              </button>
-              <button type="button" onClick={() => setPendingAdd(null)}>Cancel</button>
-            </div>
-          </div>
-        </div>
+        <AddJourneyDialog
+          candidate={pendingAdd.candidate}
+          searchForm={pendingAdd.searchForm}
+          rttCookie={rttCookie}
+          authHeaders={authHeaders}
+          onClose={() => setPendingAdd(null)}
+          onAdded={(savedKey, journeyId, detail, values) => {
+            setSavedKeys((prev) => new Set(prev).add(savedKey));
+            if (journeyId !== null) savedKeyById.current.set(journeyId, savedKey);
+            if (journeyId !== null) {
+              setHistory((prev) => [{
+                id: journeyId,
+                travel_date: detail.travelDate,
+                boarded_crs: detail.boarded.crs,
+                alighted_crs: detail.alighted.crs,
+                departure_date: detail.departureDate,
+                operator_name: detail.operatorName,
+                service_origin_crs: detail.serviceOriginCrs,
+                service_destination_crs: detail.serviceDestinationCrs,
+                planned_departure: detail.plannedDeparture,
+                departure_lateness_minutes: detail.departureLatenessMinutes,
+                platform_departure: detail.platformDeparture,
+                planned_arrival: detail.plannedArrival,
+                arrival_lateness_minutes: detail.arrivalLatenessMinutes,
+                platform_arrival: detail.platformArrival,
+                direction: values.direction,
+                reason: values.reason,
+                detailed_reason: values.detailedReason,
+                url: detail.url,
+              }, ...prev]);
+            }
+            setPendingAdd(null);
+            setShowJourneySearch(false);
+          }}
+        />
       )}
 
       {canEdit && editingJourney && (
-        <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) setEditingJourney(null); }}>
-          <div className="token-dialog">
-            <div className="token-dialog-header">
-              <span>Edit Journey</span>
-              <button type="button" className="token-dialog-close" onClick={() => setEditingJourney(null)}>×</button>
-            </div>
-            <div className="add-dialog-body">
-              <div className="add-dialog-field">
-                <span>Direction</span>
-                <div className="add-dialog-options">
-                  {(["Outbound", "Inbound"] as const).map((d) => (
-                    <button type="button" key={d} className={`add-dialog-option${editDirection === d ? " selected" : ""}`} onClick={() => setEditDirection(d)}>{d}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="add-dialog-field">
-                <span>Reason</span>
-                <div className="add-dialog-options">
-                  {(["Leisure", "Work", "Life", "Love"] as const).map((r) => (
-                    <button type="button" key={r} className={`add-dialog-option${editReason === r ? " selected" : ""}`} onClick={() => setEditReason(r)}>{r}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="add-dialog-field">
-                <span>Detail</span>
-                <input type="text" name="journey-detail-note" autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} data-lpignore="true" data-1p-ignore="true" data-bwignore="true" className="add-dialog-input" value={editDetailedReason} onChange={(e) => setEditDetailedReason(limitDetail(e.target.value))} placeholder="Note" />
-              </div>
-            </div>
-            <div className="token-dialog-actions">
-              <button type="button" onClick={() => updateJourney(editingJourney.id, editDirection, editReason, editDetailedReason)}>Save</button>
-              <button type="button" onClick={() => setEditingJourney(null)}>Cancel</button>
-            </div>
-          </div>
-        </div>
+        <EditJourneyDialog
+          journey={editingJourney}
+          authHeaders={authHeaders}
+          onClose={() => setEditingJourney(null)}
+          onSaved={(id, values) => {
+            setHistory((prev) => prev.map((j) => j.id === id ? { ...j, direction: values.direction, reason: values.reason, detailed_reason: values.detailedReason } : j));
+            setEditingJourney(null);
+          }}
+        />
       )}
 
       {showStats && (
@@ -677,19 +585,15 @@ export default function UserPage() {
         </div>
       )}
 
-      {canEdit && (
-        <JourneySearch
+      {canEdit && showJourneySearch && (
+        <NewJourneyDialog
           stations={stations}
           rttCookie={rttCookie}
           authHeaders={authHeaders}
           savedKeys={savedKeys}
-          savingId={savingId}
-          onMessage={setMessage}
+          onClose={() => setShowJourneySearch(false)}
           onAddCandidate={(candidate, searchForm) => {
             setPendingAdd({ candidate, searchForm });
-            setAddDirection("Outbound");
-            setAddReason("Leisure");
-            setAddDetailedReason("");
           }}
         />
       )}
@@ -700,7 +604,7 @@ export default function UserPage() {
         <div className="section-title">
           <h2>Journey History <span className="section-count">({activeHideHistoryAfterDate ? `${visibleHistory.length}/${history.length}` : history.length})</span></h2>
           <div style={{ display: "flex", gap: "4px" }}>
-            <button type="button" onClick={() => setSortAsc((v) => !v)} title={sortAsc ? "Sort: oldest first" : "Sort: newest first"}>{sortAsc ? "↑" : "↓"}</button>
+            {canEdit && <button type="button" onClick={() => setShowJourneySearch(true)}>Add</button>}
           </div>
         </div>
         <div className="plain-table history-table">
@@ -747,7 +651,12 @@ export default function UserPage() {
                             <ExternalLink size={13} strokeWidth={1.5} />
                           </button>
                         )}
-                        <button type="button" className="icon-btn" title="Edit" onClick={() => { setEditingJourney(item); setEditDirection((item.direction as "Outbound" | "Inbound") ?? "Outbound"); setEditReason((item.reason as "Leisure" | "Work" | "Life" | "Love") ?? "Leisure"); setEditDetailedReason(item.detailed_reason ?? ""); }}>
+                        <button type="button" className="icon-btn" title="Edit" onClick={() => setEditingJourney({
+                          id: item.id,
+                          direction: item.direction,
+                          reason: item.reason,
+                          detailed_reason: item.detailed_reason ?? "",
+                        })}>
                           <Pencil size={13} strokeWidth={1.5} />
                         </button>
                         <button type="button" className="icon-btn del-btn" title="Delete" onClick={() => deleteJourney(item.id)}>

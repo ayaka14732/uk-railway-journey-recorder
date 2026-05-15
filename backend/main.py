@@ -12,7 +12,7 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any, Literal
 
 import bcrypt
 import jwt as pyjwt
@@ -21,9 +21,8 @@ import uvicorn.logging as uvicorn_logging
 from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.db import get_db_path, init_db, load_local_env
 
@@ -83,7 +82,7 @@ def configure_uvicorn_access_logging() -> None:
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_http_bearer_optional),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_http_bearer_optional),
 ) -> int:
     if not credentials:
         raise HTTPException(status_code=401, detail="Authorization required")
@@ -98,8 +97,8 @@ def get_current_user(
 
 
 def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_http_bearer_optional),
-) -> Optional[int]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(_http_bearer_optional),
+) -> int | None:
     if not credentials:
         return None
     try:
@@ -113,6 +112,9 @@ def get_optional_user(
 
 
 # ── Request models ────────────────────────────────────────────────────────────
+
+Direction = Literal["Outbound", "Inbound"]
+Reason = Literal["Leisure", "Work", "Life", "Love"]
 
 class LoginRequest(BaseModel):
     username: str = Field(..., pattern=r"^[a-z][a-z0-9]+$")
@@ -133,16 +135,17 @@ class ResolveRequest(BaseModel):
     destinationCrs: str = Field(..., min_length=2, max_length=8)
     identity: str = Field(..., min_length=2)
     departureDate: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
-    save: bool = False
-    direction: Optional[str] = None
-    reason: Optional[str] = None
-    detailedReason: Optional[str] = Field(None, max_length=45)
+    direction: Direction | None = None
+    reason: Reason | None = None
+    detailedReason: str | None = Field(None, max_length=45)
 
 
 class UpdateJourneyRequest(BaseModel):
-    direction: Optional[str] = None
-    reason: Optional[str] = None
-    detailed_reason: Optional[str] = Field(None, max_length=45)
+    model_config = ConfigDict(extra="forbid")
+
+    direction: Direction | None = None
+    reason: Reason | None = None
+    detailed_reason: str | None = Field(None, max_length=45)
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -173,7 +176,7 @@ def startup() -> None:
 
 # ── RTT website scraping ──────────────────────────────────────────────────────
 
-def get_rtt_cookie(x_rtt_cookie: Annotated[Optional[str], Header()] = None) -> str:
+def get_rtt_cookie(x_rtt_cookie: Annotated[str | None, Header()] = None) -> str:
     return x_rtt_cookie or ""
 
 
@@ -336,9 +339,9 @@ def scrape_service_page(
 
 def save_journey(
     detail: dict[str, Any],
-    direction: Optional[str],
-    reason: Optional[str],
-    detailed_reason: Optional[str],
+    direction: str | None,
+    reason: str | None,
+    detailed_reason: str | None,
     user_id: int,
 ) -> int:
     with sqlite3.connect(DB_PATH) as conn:
@@ -484,9 +487,7 @@ def resolve_service(
     )
     detail["travelDate"] = request.travelDate
 
-    saved_id: int | None = None
-    if request.save:
-        saved_id = save_journey(detail, request.direction, request.reason, request.detailedReason, user_id)
+    saved_id = save_journey(detail, request.direction, request.reason, request.detailedReason, user_id)
     return {"journeyId": saved_id, "detail": detail}
 
 
@@ -496,10 +497,16 @@ def update_journey(
     body: UpdateJourneyRequest,
     user_id: int = Depends(get_current_user),
 ) -> dict[str, Any]:
+    updates = [(f, getattr(body, f)) for f in body.model_fields_set]
+    if not updates:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    assignments = ", ".join(f"{column} = ?" for column, _ in updates)
+    values = [value for _, value in updates]
     with sqlite3.connect(DB_PATH) as conn:
         result = conn.execute(
-            "UPDATE journeys SET direction = ?, reason = ?, detailed_reason = ? WHERE id = ? AND user_id = ?",
-            (body.direction, body.reason, body.detailed_reason, journey_id, user_id),
+            f"UPDATE journeys SET {assignments} WHERE id = ? AND user_id = ?",
+            (*values, journey_id, user_id),
         )
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Journey not found")
@@ -525,7 +532,7 @@ def delete_journey(
 def list_journeys(
     limit: int = Query(default=20, ge=1, le=800),
     username: str = Query(..., pattern=r"^[a-z][a-z0-9]+$"),
-    requesting_user_id: Optional[int] = Depends(get_optional_user),
+    requesting_user_id: int | None = Depends(get_optional_user),
 ) -> dict[str, Any]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
