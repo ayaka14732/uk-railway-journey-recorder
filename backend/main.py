@@ -22,7 +22,7 @@ from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.db import get_db_path, init_db, load_local_env
 
@@ -141,6 +141,8 @@ class ResolveRequest(BaseModel):
 
 
 class UpdateJourneyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     direction: Direction | None = None
     reason: Reason | None = None
     detailed_reason: str | None = Field(None, max_length=45)
@@ -495,14 +497,9 @@ def update_journey(
     body: UpdateJourneyRequest,
     user_id: int = Depends(get_current_user),
 ) -> dict[str, Any]:
-    field_map = {
-        "direction": "direction",
-        "reason": "reason",
-        "detailed_reason": "detailed_reason",
-    }
-    updates = [(field_map[field], getattr(body, field)) for field in body.model_fields_set if field in field_map]
+    updates = [(f, getattr(body, f)) for f in body.model_fields_set]
     if not updates:
-        return {"updated": journey_id}
+        raise HTTPException(status_code=400, detail="No valid fields to update")
 
     assignments = ", ".join(f"{column} = ?" for column, _ in updates)
     values = [value for _, value in updates]

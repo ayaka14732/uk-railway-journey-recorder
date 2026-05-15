@@ -29,6 +29,10 @@ export default function EditJourneyDialog({
       ...(detailedReason !== initDetailedReason && { detailed_reason: detailedReason }),
     };
 
+    if (Object.keys(body).length === 0) {
+      onSaved(journey.id, values);
+      return;
+    }
     await apiJson(`/api/journeys/${journey.id}`, {
       method: "PATCH",
       headers: authHeaders?.() ?? {},
