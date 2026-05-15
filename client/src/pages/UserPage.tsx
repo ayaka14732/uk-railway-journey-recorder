@@ -369,7 +369,7 @@ export default function UserPage() {
           rttCookie={rttCookie}
           authHeaders={authHeaders}
           onClose={() => setPendingAdd(null)}
-          onAdded={(savedKey, journeyId, detail, direction, reason, detailedReason) => {
+          onAdded={(savedKey, journeyId, detail, values) => {
             setSavedKeys((prev) => new Set(prev).add(savedKey));
             if (journeyId !== null) savedKeyById.current.set(journeyId, savedKey);
             if (journeyId !== null) {
@@ -388,9 +388,9 @@ export default function UserPage() {
                 planned_arrival: detail.plannedArrival,
                 arrival_lateness_minutes: detail.arrivalLatenessMinutes,
                 platform_arrival: detail.platformArrival,
-                direction,
-                reason,
-                detailed_reason: detailedReason,
+                direction: values.direction,
+                reason: values.reason,
+                detailed_reason: values.detailedReason,
                 url: detail.url,
               }, ...prev]);
             }
@@ -405,8 +405,8 @@ export default function UserPage() {
           journey={editingJourney}
           authHeaders={authHeaders}
           onClose={() => setEditingJourney(null)}
-          onSaved={(id, direction, reason, detailedReason) => {
-            setHistory((prev) => prev.map((j) => j.id === id ? { ...j, direction, reason, detailed_reason: detailedReason } : j));
+          onSaved={(id, values) => {
+            setHistory((prev) => prev.map((j) => j.id === id ? { ...j, direction: values.direction, reason: values.reason, detailed_reason: values.detailedReason } : j));
             setEditingJourney(null);
           }}
         />

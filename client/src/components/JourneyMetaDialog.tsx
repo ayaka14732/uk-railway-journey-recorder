@@ -6,6 +6,11 @@ const DETAIL_MAX_CHARS = 45;
 
 export type Direction = typeof DIRECTIONS[number];
 export type Reason = typeof REASONS[number];
+export type JourneyMetaValues = {
+  direction: Direction;
+  reason: Reason;
+  detailedReason: string;
+};
 
 function limitDetail(value: string): string {
   return Array.from(value).slice(0, DETAIL_MAX_CHARS).join("");
@@ -29,7 +34,7 @@ export default function JourneyMetaDialog({
   initialDetailedReason?: string;
   primaryLabel: string;
   savingLabel?: string;
-  onSubmit: (values: { direction: Direction; reason: Reason; detailedReason: string }) => void | Promise<void>;
+  onSubmit: (values: JourneyMetaValues) => void | Promise<void>;
   onClose: () => void;
 }) {
   const [direction, setDirection] = useState<Direction>(() => initialDirection);

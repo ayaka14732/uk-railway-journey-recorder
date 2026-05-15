@@ -1,10 +1,10 @@
 import { apiJson } from "@/lib/api";
-import JourneyMetaDialog, { type Direction, type Reason } from "@/components/JourneyMetaDialog";
+import JourneyMetaDialog, { type JourneyMetaValues } from "@/components/JourneyMetaDialog";
 
 export type EditableJourney = {
   id: number;
-  direction?: Direction;
-  reason?: Reason;
+  direction?: JourneyMetaValues["direction"];
+  reason?: JourneyMetaValues["reason"];
   detailed_reason?: string;
 };
 
@@ -17,15 +17,15 @@ export default function EditJourneyDialog({
   journey: EditableJourney;
   authHeaders?: () => Record<string, string>;
   onClose: () => void;
-  onSaved: (id: number, direction: Direction, reason: Reason, detailedReason: string) => void;
+  onSaved: (id: number, values: JourneyMetaValues) => void;
 }) {
-  async function save({ direction, reason, detailedReason }: { direction: Direction; reason: Reason; detailedReason: string }) {
+  async function save(values: JourneyMetaValues) {
     await apiJson(`/api/journeys/${journey.id}`, {
       method: "PATCH",
       headers: authHeaders?.() ?? {},
-      body: JSON.stringify({ direction, reason, detailed_reason: detailedReason }),
+      body: JSON.stringify({ direction: values.direction, reason: values.reason, detailed_reason: values.detailedReason }),
     });
-    onSaved(journey.id, direction, reason, detailedReason);
+    onSaved(journey.id, values);
   }
 
   return (

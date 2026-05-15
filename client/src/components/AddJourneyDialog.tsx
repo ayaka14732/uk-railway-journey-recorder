@@ -1,5 +1,5 @@
 import { apiJson } from "@/lib/api";
-import JourneyMetaDialog, { type Direction, type Reason } from "@/components/JourneyMetaDialog";
+import JourneyMetaDialog, { type JourneyMetaValues } from "@/components/JourneyMetaDialog";
 import { type Candidate, type SearchForm } from "@/components/JourneySearch";
 
 type JourneyDetail = {
@@ -32,9 +32,9 @@ export default function AddJourneyDialog({
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
   onClose: () => void;
-  onAdded: (savedKey: string, journeyId: number | null, detail: JourneyDetail, direction: Direction, reason: Reason, detailedReason: string) => void;
+  onAdded: (savedKey: string, journeyId: number | null, detail: JourneyDetail, values: JourneyMetaValues) => void;
 }) {
-  async function addJourney({ direction, reason, detailedReason }: { direction: Direction; reason: Reason; detailedReason: string }) {
+  async function addJourney(values: JourneyMetaValues) {
     const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
       method: "POST",
       headers: { "X-RTT-Cookie": rttCookie, ...(authHeaders?.() ?? {}) },
@@ -45,12 +45,12 @@ export default function AddJourneyDialog({
         identity: candidate.identity,
         departureDate: candidate.departureDate || searchForm.travelDate,
         save: true,
-        direction,
-        reason,
-        detailedReason,
+        direction: values.direction,
+        reason: values.reason,
+        detailedReason: values.detailedReason,
       }),
     });
-    onAdded(`${candidate.identity}-${candidate.departureDate}`, data.journeyId, data.detail, direction, reason, detailedReason);
+    onAdded(`${candidate.identity}-${candidate.departureDate}`, data.journeyId, data.detail, values);
   }
 
   return (
