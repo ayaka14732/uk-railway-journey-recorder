@@ -12,7 +12,7 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any, Literal, Optional
 
 import bcrypt
 import jwt as pyjwt
@@ -21,7 +21,6 @@ import uvicorn.logging as uvicorn_logging
 from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from typing import Annotated
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -114,6 +113,9 @@ def get_optional_user(
 
 # ── Request models ────────────────────────────────────────────────────────────
 
+Direction = Literal["Outbound", "Inbound"]
+Reason = Literal["Leisure", "Work", "Life", "Love"]
+
 class LoginRequest(BaseModel):
     username: str = Field(..., pattern=r"^[a-z][a-z0-9]+$")
     password: str
@@ -134,14 +136,14 @@ class ResolveRequest(BaseModel):
     identity: str = Field(..., min_length=2)
     departureDate: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
     save: bool = False
-    direction: Optional[str] = None
-    reason: Optional[str] = None
+    direction: Optional[Direction] = None
+    reason: Optional[Reason] = None
     detailedReason: Optional[str] = Field(None, max_length=45)
 
 
 class UpdateJourneyRequest(BaseModel):
-    direction: Optional[str] = None
-    reason: Optional[str] = None
+    direction: Optional[Direction] = None
+    reason: Optional[Reason] = None
     detailed_reason: Optional[str] = Field(None, max_length=45)
 
 
