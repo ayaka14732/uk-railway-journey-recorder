@@ -367,12 +367,33 @@ export default function UserPage() {
           rttCookie={rttCookie}
           authHeaders={authHeaders}
           onClose={() => setPendingAdd(null)}
-          onAdded={async (savedKey, journeyId) => {
+          onAdded={(savedKey, journeyId, detail, direction, reason, detailedReason) => {
             setSavedKeys((prev) => new Set(prev).add(savedKey));
             if (journeyId !== null) savedKeyById.current.set(journeyId, savedKey);
+            if (journeyId !== null) {
+              setHistory((prev) => [{
+                id: journeyId,
+                travel_date: detail.travelDate,
+                boarded_crs: detail.boarded.crs,
+                alighted_crs: detail.alighted.crs,
+                departure_date: detail.departureDate,
+                operator_name: detail.operatorName,
+                service_origin_crs: detail.serviceOriginCrs,
+                service_destination_crs: detail.serviceDestinationCrs,
+                planned_departure: detail.plannedDeparture,
+                departure_lateness_minutes: detail.departureLatenessMinutes,
+                platform_departure: detail.platformDeparture,
+                planned_arrival: detail.plannedArrival,
+                arrival_lateness_minutes: detail.arrivalLatenessMinutes,
+                platform_arrival: detail.platformArrival,
+                direction,
+                reason,
+                detailed_reason: detailedReason,
+                url: detail.url,
+              }, ...prev]);
+            }
             setPendingAdd(null);
             setShowJourneySearch(false);
-            await loadHistory();
           }}
         />
       )}

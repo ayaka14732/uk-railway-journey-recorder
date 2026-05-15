@@ -5,6 +5,23 @@ import { type Candidate, type SearchForm } from "@/components/JourneySearch";
 
 const DETAIL_MAX_CHARS = 45;
 
+type JourneyDetail = {
+  travelDate: string;
+  departureDate?: string;
+  operatorName?: string;
+  serviceOriginCrs?: string;
+  serviceDestinationCrs?: string;
+  boarded: { crs: string };
+  alighted: { crs: string };
+  plannedDeparture?: string;
+  departureLatenessMinutes?: number | null;
+  platformDeparture?: string | null;
+  plannedArrival?: string;
+  arrivalLatenessMinutes?: number | null;
+  platformArrival?: string | null;
+  url?: string;
+};
+
 function limitDetail(value: string): string {
   return Array.from(value).slice(0, DETAIL_MAX_CHARS).join("");
 }
@@ -22,7 +39,7 @@ export default function AddJourneyDialog({
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
   onClose: () => void;
-  onAdded: (savedKey: string, journeyId: number | null) => void;
+  onAdded: (savedKey: string, journeyId: number | null, detail: JourneyDetail, direction: string, reason: string, detailedReason: string) => void;
 }) {
   const [direction, setDirection] = useState<"Outbound" | "Inbound">("Outbound");
   const [reason, setReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
@@ -34,7 +51,7 @@ export default function AddJourneyDialog({
     setSaving(true);
     setMessage("");
     try {
-      const data = await apiJson<{ journeyId: number | null }>("/api/resolve-service", {
+      const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
         method: "POST",
         headers: { "X-RTT-Cookie": rttCookie, ...(authHeaders?.() ?? {}) },
         body: JSON.stringify({
@@ -49,7 +66,7 @@ export default function AddJourneyDialog({
           detailedReason,
         }),
       });
-      onAdded(`${candidate.identity}-${candidate.departureDate}`, data.journeyId);
+      onAdded(`${candidate.identity}-${candidate.departureDate}`, data.journeyId, data.detail, direction, reason, detailedReason);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     } finally {
