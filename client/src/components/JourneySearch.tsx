@@ -164,24 +164,21 @@ export default function JourneySearch({
   rttCookie,
   authHeaders,
   addLabel = "Add",
-  message = "",
   savedKeys,
   savingId = "",
   onAddCandidate,
-  onMessage,
 }: {
   stations: Station[];
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
   addLabel?: string;
-  message?: string;
   savedKeys?: Set<string>;
   savingId?: string;
   onAddCandidate?: (candidate: Candidate, form: SearchForm) => void;
-  onMessage?: (message: string) => void;
 }) {
   const [form, setForm] = useState<SearchForm>(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const stationMap = useMemo(() => new Map(stations.map((s) => [s.crs, s.name])), [stations]);
@@ -197,7 +194,7 @@ export default function JourneySearch({
     event.preventDefault();
     setLoading(true);
     setHasSearched(false);
-    onMessage?.("");
+    setMessage("");
     setCandidates([]);
     try {
       const data = await apiJson<{ candidates: Candidate[] }>("/api/search-services", {
@@ -212,7 +209,7 @@ export default function JourneySearch({
       setCandidates(data.candidates);
       setHasSearched(true);
     } catch (error) {
-      onMessage?.(error instanceof Error ? error.message : String(error));
+      setMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setLoading(false);
     }

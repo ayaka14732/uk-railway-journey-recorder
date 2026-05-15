@@ -9,7 +9,6 @@ export default function SearchPage() {
   const [, setLocation] = useLocation();
   const token = auth.token();
   const [stations, setStations] = useState<Station[]>([]);
-  const [message, setMessage] = useState("");
   const [rttCookie, setRttCookie] = useState<string>(() => localStorage.getItem("rtt_cookie") ?? "");
   const [showTokenDialog, setShowTokenDialog] = useState(false);
   const [draftCookie, setDraftCookie] = useState<string>(() => localStorage.getItem("rtt_cookie") ?? "");
@@ -83,10 +82,7 @@ export default function SearchPage() {
         stations={stations}
         rttCookie={rttCookie}
         authHeaders={authHeaders}
-        onMessage={setMessage}
       />
-
-      {message && <div className="message-line" role="status">{message}</div>}
     </main>
   );
 }

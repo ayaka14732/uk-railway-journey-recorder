@@ -1,4 +1,3 @@
-import { useState } from "react";
 import JourneySearch, { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
 
 export default function NewJourneyDialog({
@@ -16,8 +15,6 @@ export default function NewJourneyDialog({
   onClose: () => void;
   onAddCandidate: (candidate: Candidate, searchForm: SearchForm) => void;
 }) {
-  const [message, setMessage] = useState("");
-
   return (
     <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="token-dialog journey-search-dialog">
@@ -29,13 +26,8 @@ export default function NewJourneyDialog({
           stations={stations}
           rttCookie={rttCookie}
           authHeaders={authHeaders}
-          message={message}
           savedKeys={savedKeys}
-          onMessage={setMessage}
-          onAddCandidate={(candidate, searchForm) => {
-            setMessage("");
-            onAddCandidate(candidate, searchForm);
-          }}
+          onAddCandidate={onAddCandidate}
         />
       </div>
     </div>
