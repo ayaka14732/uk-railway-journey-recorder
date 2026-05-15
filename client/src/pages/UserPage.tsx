@@ -25,6 +25,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveCo
 type StoredJourney = {
   id: number;
   travel_date: string;
+  departure_date?: string;
   boarded_crs: string;
   alighted_crs: string;
   url?: string;
