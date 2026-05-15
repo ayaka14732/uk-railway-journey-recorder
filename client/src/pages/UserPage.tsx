@@ -246,6 +246,7 @@ export default function UserPage() {
   }
 
   async function deleteJourney(id: number) {
+    setMessage("");
     try {
       await apiJson(`/api/journeys/${id}`, { method: "DELETE", headers: authHeaders() });
       setHistory((prev) => prev.filter((j) => j.id !== id));
