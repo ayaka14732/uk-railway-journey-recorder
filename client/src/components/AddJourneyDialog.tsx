@@ -41,8 +41,8 @@ export default function AddJourneyDialog({
       headers: { "X-RTT-Cookie": rttCookie, ...(authHeaders?.() ?? {}) },
       body: JSON.stringify({
         travelDate: searchForm.travelDate,
-        originCrs: searchForm.originCrs.toUpperCase(),
-        destinationCrs: searchForm.destinationCrs.toUpperCase(),
+        originCrs: searchForm.originCrs,
+        destinationCrs: searchForm.destinationCrs,
         identity: candidate.identity,
         departureDate: candidate.departureDate || searchForm.travelDate,
         direction: values.direction,

@@ -198,11 +198,7 @@ export default function JourneySearch({
       const data = await apiJson<{ candidates: Candidate[] }>("/api/search-services", {
         method: "POST",
         headers: { "X-RTT-Cookie": rttCookie, ...(authHeaders?.() ?? {}) },
-        body: JSON.stringify({
-          ...form,
-          originCrs: form.originCrs.toUpperCase(),
-          destinationCrs: form.destinationCrs.toUpperCase(),
-        }),
+        body: JSON.stringify(form),
       });
       setCandidates(data.candidates);
       setHasSearched(true);
