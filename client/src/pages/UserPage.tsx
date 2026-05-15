@@ -13,7 +13,7 @@ import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
 import AddJourneyDialog from "@/components/AddJourneyDialog";
 import AnchoredTooltip from "@/components/AnchoredTooltip";
-import EditJourneyDialog from "@/components/EditJourneyDialog";
+import EditJourneyDialog, { type EditableJourney } from "@/components/EditJourneyDialog";
 import { type Direction, type Reason } from "@/components/JourneyMetaDialog";
 import { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
 import NewJourneyDialog from "@/components/NewJourneyDialog";
@@ -121,7 +121,7 @@ export default function UserPage() {
   const [hideHistoryAfterEnabled, setHideHistoryAfterEnabled] = useState(() => localStorage.getItem("hide_history_after_enabled") === "1" || !!localStorage.getItem("hide_history_after_date"));
   const [hideHistoryAfterDate, setHideHistoryAfterDate] = useState(() => localStorage.getItem("hide_history_after_date") ?? "");
   const mapRef = useRef<HTMLDivElement>(null);
-  const [editingJourney, setEditingJourney] = useState<StoredJourney | null>(null);
+  const [editingJourney, setEditingJourney] = useState<EditableJourney | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
 
   const stationMap = useMemo(() => new Map(stations.map((s) => [s.crs, s.name])), [stations]);
@@ -650,7 +650,12 @@ export default function UserPage() {
                             <ExternalLink size={13} strokeWidth={1.5} />
                           </button>
                         )}
-                        <button type="button" className="icon-btn" title="Edit" onClick={() => setEditingJourney(item)}>
+                        <button type="button" className="icon-btn" title="Edit" onClick={() => setEditingJourney({
+                          id: item.id,
+                          direction: item.direction ?? "Outbound",
+                          reason: item.reason ?? "Leisure",
+                          detailed_reason: item.detailed_reason ?? "",
+                        })}>
                           <Pencil size={13} strokeWidth={1.5} />
                         </button>
                         <button type="button" className="icon-btn del-btn" title="Delete" onClick={() => deleteJourney(item.id)}>
