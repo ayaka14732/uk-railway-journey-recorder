@@ -652,8 +652,8 @@ export default function UserPage() {
                         )}
                         <button type="button" className="icon-btn" title="Edit" onClick={() => setEditingJourney({
                           id: item.id,
-                          direction: item.direction ?? "Outbound",
-                          reason: item.reason ?? "Leisure",
+                          direction: item.direction,
+                          reason: item.reason,
                           detailed_reason: item.detailed_reason ?? "",
                         })}>
                           <Pencil size={13} strokeWidth={1.5} />

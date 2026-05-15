@@ -6,8 +6,8 @@ const DETAIL_MAX_CHARS = 45;
 
 export type EditableJourney = {
   id: number;
-  direction: Direction;
-  reason: Reason;
+  direction?: Direction;
+  reason?: Reason;
   detailed_reason?: string;
 };
 
@@ -26,8 +26,8 @@ export default function EditJourneyDialog({
   onClose: () => void;
   onSaved: (id: number, direction: Direction, reason: Reason, detailedReason: string) => void;
 }) {
-  const [direction, setDirection] = useState<Direction>(() => journey.direction);
-  const [reason, setReason] = useState<Reason>(() => journey.reason);
+  const [direction, setDirection] = useState<Direction>(() => journey.direction ?? "Outbound");
+  const [reason, setReason] = useState<Reason>(() => journey.reason ?? "Leisure");
   const [detailedReason, setDetailedReason] = useState(journey.detailed_reason ?? "");
 
   async function save() {
