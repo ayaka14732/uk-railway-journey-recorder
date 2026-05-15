@@ -119,7 +119,7 @@ export default function UserPage() {
   const [showMap, setShowMap] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [hidePersonalCols, setHidePersonalCols] = useState(() => localStorage.getItem("hide_personal_cols") === "1");
-  const [hideHistoryAfterEnabled, setHideHistoryAfterEnabled] = useState(() => localStorage.getItem("hide_history_after_enabled") === "1" || !!localStorage.getItem("hide_history_after_date"));
+  const [hideHistoryAfterEnabled, setHideHistoryAfterEnabled] = useState(() => localStorage.getItem("hide_history_after_enabled") === "1");
   const [hideHistoryAfterDate, setHideHistoryAfterDate] = useState(() => localStorage.getItem("hide_history_after_date") ?? "");
   const mapRef = useRef<HTMLDivElement>(null);
   const [editingJourney, setEditingJourney] = useState<EditableJourney | null>(null);
