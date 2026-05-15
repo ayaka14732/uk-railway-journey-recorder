@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ExternalLink, Plus } from "lucide-react";
 import { apiJson } from "@/lib/api";
 import { OperatorBadge } from "@/lib/operators";
+import { localDateString } from "@/lib/utils";
 
 export type Station = { crs: string; name: string; lat?: number; long?: number };
 
@@ -30,11 +31,6 @@ export type Candidate = {
   platformArrival?: string | null;
   isCancelled?: boolean;
 };
-
-function localDateString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 const DEFAULT_FORM: SearchForm = {
   travelDate: localDateString(),

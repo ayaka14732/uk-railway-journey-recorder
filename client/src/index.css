@@ -745,6 +745,26 @@ body {
   padding: 3px 8px;
 }
 
+.section-title .icon-btn {
+  border: 1px solid var(--sbb-red);
+  background: var(--sbb-red);
+  color: #ffffff;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+}
+
+.section-title .icon-btn:hover {
+  color: #ffffff;
+  opacity: 0.85;
+}
+
+.section-title .icon-btn:disabled {
+  border-color: #999999;
+  background: #dddddd;
+  color: #555555;
+}
+
 .plain-table {
   width: 100%;
   overflow-x: auto;

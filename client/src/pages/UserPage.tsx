@@ -4,12 +4,13 @@
  * Avoid decorative imagery, animation, language switching, platform fields, and detail panels.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { Download, ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { ApiError, apiJson } from "@/lib/api";
 import { OPERATOR_COLORS, OPERATOR_DETAILS, OPERATOR_NAMES, OperatorBadge, normaliseOperator, operatorTextColor } from "@/lib/operators";
 import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
+import { localDateString } from "@/lib/utils";
 import { isValidUsername } from "@/lib/username";
 import AddJourneyDialog from "@/components/AddJourneyDialog";
 import AnchoredTooltip from "@/components/AnchoredTooltip";
@@ -211,6 +212,44 @@ export default function UserPage() {
     }
     return Array.from(counts.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [history]);
+
+  function exportCsv() {
+    const headers = [
+      "Date", "Operator",
+      "From CRS", "From Station", "To CRS", "To Station",
+      "Service From CRS", "Service From Station", "Service To CRS", "Service To Station",
+      "Direction", "Reason", "Detailed Reason",
+      "Planned Departure", "Departure Delay (min)", "Departure Platform",
+      "Planned Arrival", "Arrival Delay (min)", "Arrival Platform",
+      "URL",
+    ];
+    function esc(v: string | number | undefined | null): string {
+      if (v == null) return "";
+      const s = String(v);
+      return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+    }
+    const rows = [headers.join(",")];
+    for (const j of sortedHistory) {
+      rows.push([
+        j.travel_date, j.operator_name ?? "",
+        j.boarded_crs, stationMap.get(j.boarded_crs) ?? "",
+        j.alighted_crs, stationMap.get(j.alighted_crs) ?? "",
+        j.service_origin_crs ?? "", j.service_origin_crs ? (stationMap.get(j.service_origin_crs) ?? "") : "",
+        j.service_destination_crs ?? "", j.service_destination_crs ? (stationMap.get(j.service_destination_crs) ?? "") : "",
+        j.direction ?? "", j.reason ?? "", j.detailed_reason ?? "",
+        timeOnly(j.planned_departure), j.departure_lateness_minutes ?? "", j.platform_departure ?? "",
+        timeOnly(j.planned_arrival), j.arrival_lateness_minutes ?? "", j.platform_arrival ?? "",
+        j.url ?? "",
+      ].map(esc).join(","));
+    }
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${username}-journeys-${localDateString()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   function stationLabel(crs?: string): string {
     if (!crs) return "—";
@@ -575,7 +614,7 @@ export default function UserPage() {
                   </span>
                   <input type="date" value={hideHistoryAfterDate} onChange={(e) => { setHideHistoryAfterDate(e.target.value); if (e.target.value) localStorage.setItem("hide_history_after_date", e.target.value); else localStorage.removeItem("hide_history_after_date"); }} />
                 </label>
-                <p style={{ margin: "3px 0 0 0", fontSize: 11, color: "#888", lineHeight: 1.3 }}>Only the table is filtered; statistics and map still use all journeys.</p>
+                <p style={{ margin: "3px 0 0 0", fontSize: 11, color: "#888", lineHeight: 1.3 }}>Only the table is filtered. Statistics, map and CSV export still use all journeys.</p>
               </div>
             </div>
             <div className="token-dialog-actions">
@@ -604,7 +643,8 @@ export default function UserPage() {
         <div className="section-title">
           <h2>Journey History <span className="section-count">({activeHideHistoryAfterDate ? `${visibleHistory.length}/${history.length}` : history.length})</span></h2>
           <div style={{ display: "flex", gap: "4px" }}>
-            {canEdit && <button type="button" onClick={() => setShowJourneySearch(true)}>Add</button>}
+            <button type="button" className="icon-btn" title="Export CSV" onClick={exportCsv} disabled={sortedHistory.length === 0}><Download size={14} strokeWidth={1.5} /></button>
+            {canEdit && <button type="button" className="icon-btn" title="Add journey" onClick={() => setShowJourneySearch(true)}><Plus size={14} strokeWidth={1.5} /></button>}
           </div>
         </div>
         <div className="plain-table history-table">
