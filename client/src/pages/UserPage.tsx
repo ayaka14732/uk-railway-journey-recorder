@@ -11,6 +11,7 @@ import { OPERATOR_COLORS, OPERATOR_DETAILS, OPERATOR_NAMES, OperatorBadge, norma
 import { auth } from "@/lib/auth";
 import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
+import AddJourneyDialog from "@/components/AddJourneyDialog";
 import AnchoredTooltip from "@/components/AnchoredTooltip";
 import JourneyMetaDialog from "@/components/JourneyMetaDialog";
 import { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
@@ -19,20 +20,6 @@ import NotFound from "./NotFound";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-
-type JourneyDetail = {
-  identity?: string;
-  departureDate?: string;
-  operatorName?: string;
-  serviceOriginCrs?: string;
-  serviceDestinationCrs?: string;
-  boarded: { crs: string; name: string };
-  alighted: { crs: string; name: string };
-  plannedDeparture?: string;
-  departureLatenessMinutes?: number | null;
-  plannedArrival?: string;
-  arrivalLatenessMinutes?: number | null;
-};
 
 type StoredJourney = {
   id: number;
@@ -123,7 +110,6 @@ export default function UserPage() {
     setShowTokenDialog(false);
   }
 
-  const [savingId, setSavingId] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [history, setHistory] = useState<StoredJourney[]>([]);
   const [sortAsc, setSortAsc] = useState(false);
@@ -140,10 +126,6 @@ export default function UserPage() {
   const [hideHistoryAfterEnabled, setHideHistoryAfterEnabled] = useState(() => localStorage.getItem("hide_history_after_enabled") === "1" || !!localStorage.getItem("hide_history_after_date"));
   const [hideHistoryAfterDate, setHideHistoryAfterDate] = useState(() => localStorage.getItem("hide_history_after_date") ?? "");
   const mapRef = useRef<HTMLDivElement>(null);
-  const [addDirection, setAddDirection] = useState<"Outbound" | "Inbound">("Outbound");
-  const [addReason, setAddReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
-  const [addDetailedReason, setAddDetailedReason] = useState<string>("");
-  const [addJourneyMessage, setAddJourneyMessage] = useState("");
   const [editingJourney, setEditingJourney] = useState<StoredJourney | null>(null);
   const [editJourneyMessage, setEditJourneyMessage] = useState("");
   const [editDirection, setEditDirection] = useState<"Outbound" | "Inbound">("Outbound");
@@ -302,40 +284,6 @@ export default function UserPage() {
     }
   }
 
-  async function addJourney(candidate: Candidate, searchForm: SearchForm, direction: string, reason: string, detailedReason: string) {
-    setSavingId(candidate.identity);
-    setAddJourneyMessage("");
-    setMessage("");
-    try {
-      const data = await apiJson<{ journeyId: number | null; detail: JourneyDetail }>("/api/resolve-service", {
-        method: "POST",
-        headers: { "X-RTT-Cookie": rttCookie, ...authHeaders() },
-        body: JSON.stringify({
-          travelDate: searchForm.travelDate,
-          originCrs: searchForm.originCrs.toUpperCase(),
-          destinationCrs: searchForm.destinationCrs.toUpperCase(),
-          identity: candidate.identity,
-          departureDate: candidate.departureDate || searchForm.travelDate,
-          save: true,
-          direction,
-          reason,
-          detailedReason,
-        }),
-      });
-      const savedKey = `${candidate.identity}-${candidate.departureDate}`;
-      setSavedKeys((prev) => new Set(prev).add(savedKey));
-      if (data.journeyId !== null) savedKeyById.current.set(data.journeyId!, savedKey);
-      setPendingAdd(null);
-      setShowJourneySearch(false);
-      setAddJourneyMessage("");
-      await loadHistory();
-    } catch (error) {
-      setAddJourneyMessage(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSavingId("");
-    }
-  }
-
   const sortedHistory = useMemo(() => [...history].sort((a, b) => {
     const dateCmp = a.travel_date.localeCompare(b.travel_date);
     const timeCmp = (a.planned_departure ?? "").localeCompare(b.planned_departure ?? "");
@@ -438,21 +386,19 @@ export default function UserPage() {
       )}
 
       {canEdit && pendingAdd && (
-        <JourneyMetaDialog
-          title="Add Journey"
-          message={addJourneyMessage}
-          stacked
-          direction={addDirection}
-          reason={addReason}
-          detailedReason={addDetailedReason}
-          primaryLabel="Add to history"
-          saving={savingId === pendingAdd.candidate.identity}
-          savingLabel="Adding…"
-          onDirectionChange={setAddDirection}
-          onReasonChange={setAddReason}
-          onDetailedReasonChange={(value) => setAddDetailedReason(limitDetail(value))}
-          onSubmit={() => addJourney(pendingAdd.candidate, pendingAdd.searchForm, addDirection, addReason, addDetailedReason)}
-          onClose={() => { setPendingAdd(null); setAddJourneyMessage(""); }}
+        <AddJourneyDialog
+          candidate={pendingAdd.candidate}
+          searchForm={pendingAdd.searchForm}
+          rttCookie={rttCookie}
+          authHeaders={authHeaders}
+          onClose={() => setPendingAdd(null)}
+          onAdded={async (savedKey, journeyId) => {
+            setSavedKeys((prev) => new Set(prev).add(savedKey));
+            if (journeyId !== null) savedKeyById.current.set(journeyId, savedKey);
+            setPendingAdd(null);
+            setShowJourneySearch(false);
+            await loadHistory();
+          }}
         />
       )}
 
@@ -650,14 +596,9 @@ export default function UserPage() {
           rttCookie={rttCookie}
           authHeaders={authHeaders}
           savedKeys={savedKeys}
-          savingId={savingId}
           onClose={() => setShowJourneySearch(false)}
           onAddCandidate={(candidate, searchForm) => {
-            setAddJourneyMessage("");
             setPendingAdd({ candidate, searchForm });
-            setAddDirection("Outbound");
-            setAddReason("Leisure");
-            setAddDetailedReason("");
           }}
         />
       )}

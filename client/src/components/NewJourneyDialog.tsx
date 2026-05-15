@@ -6,7 +6,6 @@ export default function NewJourneyDialog({
   rttCookie,
   authHeaders,
   savedKeys,
-  savingId,
   onClose,
   onAddCandidate,
 }: {
@@ -14,7 +13,6 @@ export default function NewJourneyDialog({
   rttCookie: string;
   authHeaders?: () => Record<string, string>;
   savedKeys?: Set<string>;
-  savingId: string;
   onClose: () => void;
   onAddCandidate: (candidate: Candidate, searchForm: SearchForm) => void;
 }) {
@@ -34,7 +32,6 @@ export default function NewJourneyDialog({
           title={null}
           message={message}
           savedKeys={savedKeys}
-          savingId={savingId}
           onMessage={setMessage}
           onAddCandidate={(candidate, searchForm) => {
             setMessage("");
