@@ -13,7 +13,7 @@ import { publicAsset } from "@/lib/assets";
 import { isValidUsername } from "@/lib/username";
 import AddJourneyDialog from "@/components/AddJourneyDialog";
 import AnchoredTooltip from "@/components/AnchoredTooltip";
-import JourneyMetaDialog from "@/components/JourneyMetaDialog";
+import EditJourneyDialog from "@/components/EditJourneyDialog";
 import { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
 import NewJourneyDialog from "@/components/NewJourneyDialog";
 import NotFound from "./NotFound";
@@ -47,12 +47,6 @@ type PendingAdd = {
 };
 
 const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
-
-const DETAIL_MAX_CHARS = 45;
-
-function limitDetail(value: string): string {
-  return Array.from(value).slice(0, DETAIL_MAX_CHARS).join("");
-}
 
 function delayText(value?: number | null) {
   if (value === null || value === undefined) return "—";
@@ -127,10 +121,6 @@ export default function UserPage() {
   const [hideHistoryAfterDate, setHideHistoryAfterDate] = useState(() => localStorage.getItem("hide_history_after_date") ?? "");
   const mapRef = useRef<HTMLDivElement>(null);
   const [editingJourney, setEditingJourney] = useState<StoredJourney | null>(null);
-  const [editJourneyMessage, setEditJourneyMessage] = useState("");
-  const [editDirection, setEditDirection] = useState<"Outbound" | "Inbound">("Outbound");
-  const [editReason, setEditReason] = useState<"Leisure" | "Work" | "Life" | "Love">("Leisure");
-  const [editDetailedReason, setEditDetailedReason] = useState<string>("");
   const [stations, setStations] = useState<Station[]>([]);
 
   const stationMap = useMemo(() => new Map(stations.map((s) => [s.crs, s.name])), [stations]);
@@ -252,21 +242,6 @@ export default function UserPage() {
       } else {
         setMessage(error instanceof Error ? error.message : String(error));
       }
-    }
-  }
-
-  async function updateJourney(id: number, direction: string, reason: string, detailedReason: string) {
-    setEditJourneyMessage("");
-    try {
-      await apiJson(`/api/journeys/${id}`, {
-        method: "PATCH",
-        headers: authHeaders(),
-        body: JSON.stringify({ direction, reason, detailed_reason: detailedReason }),
-      });
-      setHistory((prev) => prev.map((j) => j.id === id ? { ...j, direction, reason, detailed_reason: detailedReason } : j));
-      setEditingJourney(null);
-    } catch (error) {
-      setEditJourneyMessage(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -403,18 +378,14 @@ export default function UserPage() {
       )}
 
       {canEdit && editingJourney && (
-        <JourneyMetaDialog
-          title="Edit Journey"
-          message={editJourneyMessage}
-          direction={editDirection}
-          reason={editReason}
-          detailedReason={editDetailedReason}
-          primaryLabel="Save"
-          onDirectionChange={setEditDirection}
-          onReasonChange={setEditReason}
-          onDetailedReasonChange={(value) => setEditDetailedReason(limitDetail(value))}
-          onSubmit={() => updateJourney(editingJourney.id, editDirection, editReason, editDetailedReason)}
-          onClose={() => { setEditingJourney(null); setEditJourneyMessage(""); }}
+        <EditJourneyDialog
+          journey={editingJourney}
+          authHeaders={authHeaders}
+          onClose={() => setEditingJourney(null)}
+          onSaved={(id, direction, reason, detailedReason) => {
+            setHistory((prev) => prev.map((j) => j.id === id ? { ...j, direction, reason, detailed_reason: detailedReason } : j));
+            setEditingJourney(null);
+          }}
         />
       )}
 
@@ -656,7 +627,7 @@ export default function UserPage() {
                             <ExternalLink size={13} strokeWidth={1.5} />
                           </button>
                         )}
-                        <button type="button" className="icon-btn" title="Edit" onClick={() => { setEditJourneyMessage(""); setEditingJourney(item); setEditDirection((item.direction as "Outbound" | "Inbound") ?? "Outbound"); setEditReason((item.reason as "Leisure" | "Work" | "Life" | "Love") ?? "Leisure"); setEditDetailedReason(item.detailed_reason ?? ""); }}>
+                        <button type="button" className="icon-btn" title="Edit" onClick={() => setEditingJourney(item)}>
                           <Pencil size={13} strokeWidth={1.5} />
                         </button>
                         <button type="button" className="icon-btn del-btn" title="Delete" onClick={() => deleteJourney(item.id)}>
