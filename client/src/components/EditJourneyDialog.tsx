@@ -1,10 +1,10 @@
 import { apiJson } from "@/lib/api";
-import JourneyMetaDialog, { type JourneyMetaValues } from "@/components/JourneyMetaDialog";
+import JourneyMetaDialog, { Direction, Reason, type JourneyMetaValues } from "@/components/JourneyMetaDialog";
 
 export type EditableJourney = {
   id: number;
-  direction?: JourneyMetaValues["direction"];
-  reason?: JourneyMetaValues["reason"];
+  direction?: Direction;
+  reason?: Reason;
   detailed_reason?: string;
 };
 
@@ -19,21 +19,15 @@ export default function EditJourneyDialog({
   onClose: () => void;
   onSaved: (id: number, values: JourneyMetaValues) => void;
 }) {
-  const initialValues: JourneyMetaValues = {
-    direction: journey.direction ?? "Outbound",
-    reason: journey.reason ?? "Leisure",
-    detailedReason: journey.detailed_reason ?? "",
-  };
+  const { direction: initDirection, reason: initReason, detailed_reason: initDetailedReason } = journey;
 
   async function save(values: JourneyMetaValues) {
-    const body: {
-      direction?: JourneyMetaValues["direction"];
-      reason?: JourneyMetaValues["reason"];
-      detailed_reason?: string;
-    } = {};
-    if (values.direction !== initialValues.direction) body.direction = values.direction;
-    if (values.reason !== initialValues.reason) body.reason = values.reason;
-    if (values.detailedReason !== initialValues.detailedReason) body.detailed_reason = values.detailedReason;
+    const { direction, reason, detailedReason } = values;
+    const body = {
+      ...(direction !== initDirection && { direction }),
+      ...(reason !== initReason && { reason }),
+      ...(detailedReason !== initDetailedReason && { detailed_reason: detailedReason }),
+    };
 
     await apiJson(`/api/journeys/${journey.id}`, {
       method: "PATCH",
@@ -46,9 +40,9 @@ export default function EditJourneyDialog({
   return (
     <JourneyMetaDialog
       title="Edit Journey"
-      initialDirection={initialValues.direction}
-      initialReason={initialValues.reason}
-      initialDetailedReason={initialValues.detailedReason}
+      initialDirection={initDirection}
+      initialReason={initReason}
+      initialDetailedReason={initDetailedReason}
       primaryLabel="Save"
       onSubmit={save}
       onClose={onClose}
