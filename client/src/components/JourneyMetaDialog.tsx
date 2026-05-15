@@ -1,8 +1,8 @@
-export type Direction = "Outbound" | "Inbound";
-export type Reason = "Leisure" | "Work" | "Life" | "Love";
+const DIRECTIONS = ["Outbound", "Inbound"] as const;
+const REASONS = ["Leisure", "Work", "Life", "Love"] as const;
 
-const DIRECTIONS: Direction[] = ["Outbound", "Inbound"];
-const REASONS: Reason[] = ["Leisure", "Work", "Life", "Love"];
+export type Direction = typeof DIRECTIONS[number];
+export type Reason = typeof REASONS[number];
 
 export default function JourneyMetaDialog({
   title,
