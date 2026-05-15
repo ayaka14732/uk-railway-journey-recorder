@@ -26,7 +26,6 @@ type StoredJourney = {
   travel_date: string;
   boarded_crs: string;
   alighted_crs: string;
-  departure_date?: string;
   url?: string;
   operator_name?: string;
   service_origin_crs?: string;
@@ -48,12 +47,6 @@ type PendingAdd = {
 };
 
 const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
-
-function savedKeyFromJourney(journey: StoredJourney): string | null {
-  const match = journey.url?.match(/\/service\/gb-nr:([^/]+)\/(\d{4}-\d{2}-\d{2})/);
-  if (!match) return null;
-  return `${match[1]}-${journey.departure_date || match[2]}`;
-}
 
 function delayText(value?: number | null) {
   if (value === null || value === undefined) return "—";
@@ -243,16 +236,6 @@ export default function UserPage() {
       const data = await apiJson<{ display_name: string; journeys: StoredJourney[] }>(`/api/journeys?username=${encodeURIComponent(username)}&limit=800`, { headers: authHeaders() });
       setDisplayName(data.display_name);
       setHistory(data.journeys);
-      const nextSavedKeys = new Set<string>();
-      const nextSavedKeyById = new Map<number, string>();
-      for (const journey of data.journeys) {
-        const key = savedKeyFromJourney(journey);
-        if (!key) continue;
-        nextSavedKeys.add(key);
-        nextSavedKeyById.set(journey.id, key);
-      }
-      setSavedKeys(nextSavedKeys);
-      savedKeyById.current = nextSavedKeyById;
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         setNotFound(true);
