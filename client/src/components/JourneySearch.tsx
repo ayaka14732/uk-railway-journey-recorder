@@ -15,6 +15,7 @@ export type SearchForm = {
 };
 
 export type Candidate = {
+  travelDate: string;
   identity: string;
   uniqueIdentity?: string;
   departureDate: string;
@@ -23,6 +24,8 @@ export type Candidate = {
   operatorName?: string;
   serviceOriginCrs?: string;
   serviceDestinationCrs?: string;
+  boardedCrs: string;
+  alightedCrs: string;
   plannedDeparture?: string;
   departureLatenessMinutes?: number | null;
   platformDeparture?: string | null;
@@ -168,7 +171,7 @@ export default function JourneySearch({
   authHeaders?: () => Record<string, string>;
   savedKeys?: Set<string>;
   savingId?: string;
-  onAddCandidate?: (candidate: Candidate, form: SearchForm) => void;
+  onAddCandidate?: (candidate: Candidate) => void;
 }) {
   const [form, setForm] = useState<SearchForm>(DEFAULT_FORM);
   const [loading, setLoading] = useState(false);
@@ -255,7 +258,7 @@ export default function JourneySearch({
                             </button>
                           )}
                           {onAddCandidate && (
-                            <button type="button" className="icon-btn" title={saved ? "Already added" : savingId === candidate.identity ? "Adding" : "Add"} onClick={() => onAddCandidate(candidate, form)} disabled={savingId === candidate.identity || saved}>
+                            <button type="button" className="icon-btn" title={saved ? "Already added" : savingId === candidate.identity ? "Adding" : "Add"} onClick={() => onAddCandidate(candidate)} disabled={savingId === candidate.identity || saved}>
                               {saved ? (
                                 <Check size={13} strokeWidth={1.5} />
                               ) : (

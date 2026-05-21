@@ -1,4 +1,4 @@
-import JourneySearch, { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
+import JourneySearch, { type Candidate, type Station } from "@/components/JourneySearch";
 
 export default function NewJourneyDialog({
   stations,
@@ -13,7 +13,7 @@ export default function NewJourneyDialog({
   authHeaders?: () => Record<string, string>;
   savedKeys?: Set<string>;
   onClose: () => void;
-  onAddCandidate: (candidate: Candidate, searchForm: SearchForm) => void;
+  onAddCandidate: (candidate: Candidate) => void;
 }) {
   return (
     <div className="token-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
