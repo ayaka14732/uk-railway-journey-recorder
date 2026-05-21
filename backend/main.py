@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Literal
+from urllib.parse import urlparse
 
 import bcrypt
 import jwt as pyjwt
@@ -22,7 +23,7 @@ from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.db import get_db_path, init_db, load_local_env
 
@@ -146,6 +147,21 @@ class ServiceDetail(BaseModel):
     platformDeparture: str | None = None
     platformArrival: str | None = None
     isCancelled: bool = False
+
+    @field_validator("url")
+    @classmethod
+    def validate_rtt_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        parsed = urlparse(value)
+        if (
+            parsed.scheme != "https"
+            or parsed.netloc != "www.realtimetrains.co.uk"
+            or not parsed.path.startswith("/service/gb-nr:")
+        ):
+            raise ValueError("URL must be a RealTimeTrains service URL")
+        return value
 
 
 class ResolveRequest(BaseModel):
