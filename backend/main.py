@@ -13,7 +13,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Literal
-from urllib.parse import urlparse
 
 import bcrypt
 import jwt as pyjwt
@@ -154,12 +153,7 @@ class ServiceDetail(BaseModel):
         if value is None:
             return value
 
-        parsed = urlparse(value)
-        if (
-            parsed.scheme != "https"
-            or parsed.netloc != "www.realtimetrains.co.uk"
-            or not parsed.path.startswith("/service/gb-nr:")
-        ):
+        if not value.startswith(f"{RTT_WEB}/service/gb-nr:"):
             raise ValueError("URL must be a RealTimeTrains service URL")
         return value
 
