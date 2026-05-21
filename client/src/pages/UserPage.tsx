@@ -16,7 +16,7 @@ import AddJourneyDialog from "@/components/AddJourneyDialog";
 import AnchoredTooltip from "@/components/AnchoredTooltip";
 import EditJourneyDialog, { type EditableJourney } from "@/components/EditJourneyDialog";
 import { type Direction, type Reason } from "@/components/JourneyMetaDialog";
-import { type Candidate, type SearchForm, type Station } from "@/components/JourneySearch";
+import { type Candidate, type Station } from "@/components/JourneySearch";
 import NewJourneyDialog from "@/components/NewJourneyDialog";
 import NotFound from "./NotFound";
 import L from "leaflet";
@@ -46,7 +46,6 @@ type StoredJourney = {
 
 type PendingAdd = {
   candidate: Candidate;
-  searchForm: SearchForm;
 };
 
 const CHART_COLORS = ["#e0001b", "#111111", "#5b6b7a", "#8faa80", "#e8a838", "#6b8cba", "#cc7a52", "#aaaaaa"];
@@ -405,19 +404,18 @@ export default function UserPage() {
       {canEdit && pendingAdd && (
         <AddJourneyDialog
           candidate={pendingAdd.candidate}
-          searchForm={pendingAdd.searchForm}
-          rttCookie={rttCookie}
           authHeaders={authHeaders}
           onClose={() => setPendingAdd(null)}
-          onAdded={(savedKey, journeyId, detail, values) => {
+          onAdded={(savedKey, journeyId, values) => {
             setSavedKeys((prev) => new Set(prev).add(savedKey));
             if (journeyId !== null) savedKeyById.current.set(journeyId, savedKey);
             if (journeyId !== null) {
+              const detail = pendingAdd.candidate;
               setHistory((prev) => [{
                 id: journeyId,
                 travel_date: detail.travelDate,
-                boarded_crs: detail.boarded.crs,
-                alighted_crs: detail.alighted.crs,
+                boarded_crs: detail.boardedCrs,
+                alighted_crs: detail.alightedCrs,
                 departure_date: detail.departureDate,
                 operator_name: detail.operatorName,
                 service_origin_crs: detail.serviceOriginCrs,
@@ -631,8 +629,8 @@ export default function UserPage() {
           authHeaders={authHeaders}
           savedKeys={savedKeys}
           onClose={() => setShowJourneySearch(false)}
-          onAddCandidate={(candidate, searchForm) => {
-            setPendingAdd({ candidate, searchForm });
+          onAddCandidate={(candidate) => {
+            setPendingAdd({ candidate });
           }}
         />
       )}

@@ -22,7 +22,7 @@ from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.db import get_db_path, init_db, load_local_env
 
@@ -129,12 +129,37 @@ class SearchRequest(BaseModel):
     windowMinutes: int = Field(default=10, ge=8, le=180)
 
 
-class ResolveRequest(BaseModel):
+class ServiceDetail(BaseModel):
     travelDate: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
-    originCrs: str = Field(..., min_length=2, max_length=8)
-    destinationCrs: str = Field(..., min_length=2, max_length=8)
     identity: str = Field(..., min_length=2)
     departureDate: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
+    url: str | None = None
+    operatorName: str | None = None
+    serviceOriginCrs: str | None = None
+    serviceDestinationCrs: str | None = None
+    boardedCrs: str = Field(..., min_length=2, max_length=8)
+    alightedCrs: str = Field(..., min_length=2, max_length=8)
+    plannedDeparture: str | None = None
+    departureLatenessMinutes: int | None = None
+    plannedArrival: str | None = None
+    arrivalLatenessMinutes: int | None = None
+    platformDeparture: str | None = None
+    platformArrival: str | None = None
+    isCancelled: bool = False
+
+    @field_validator("url")
+    @classmethod
+    def validate_rtt_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        if not value.startswith(f"{RTT_WEB}/service/gb-nr:"):
+            raise ValueError("URL must be a RealTimeTrains service URL")
+        return value
+
+
+class ResolveRequest(BaseModel):
+    detail: ServiceDetail
     direction: Direction | None = None
     reason: Reason | None = None
     detailedReason: str | None = Field(None, max_length=45)
@@ -323,8 +348,8 @@ def scrape_service_page(
         "operatorName":             operator,
         "serviceOriginCrs":         stops[0]["crs"],
         "serviceDestinationCrs":    stops[-1]["crs"],
-        "boarded":                  {"crs": origin_crs.upper(), "name": origin_crs.upper()},
-        "alighted":                 {"crs": dest_crs.upper(),   "name": dest_crs.upper()},
+        "boardedCrs":               origin_crs.upper(),
+        "alightedCrs":              dest_crs.upper(),
         "plannedDeparture":         t4_to_iso(dep_date, dep_t4),
         "plannedArrival":           t4_to_iso(dep_date, arr_t4, next_day),
         "departureLatenessMinutes": dep_delay,
@@ -361,8 +386,8 @@ def save_journey(
             (
                 user_id,
                 detail.get("travelDate"),
-                detail["boarded"]["crs"],
-                detail["alighted"]["crs"],
+                detail["boardedCrs"],
+                detail["alightedCrs"],
                 detail.get("departureDate"),
                 detail.get("operatorName"),
                 detail.get("serviceOriginCrs"),
@@ -453,7 +478,9 @@ def search_services(
 
     def enrich(c: dict[str, Any]) -> dict[str, Any] | None:
         try:
-            return scrape_service_page(c["uid"], c["dep_date"], request.originCrs, request.destinationCrs, cookie)
+            detail = scrape_service_page(c["uid"], c["dep_date"], request.originCrs, request.destinationCrs, cookie)
+            detail["travelDate"] = request.travelDate
+            return detail
         except HTTPException:
             return None
 
@@ -476,19 +503,10 @@ def search_services(
 def resolve_service(
     request: ResolveRequest,
     user_id: int = Depends(get_current_user),
-    cookie: str = Depends(get_rtt_cookie),
 ) -> dict[str, Any]:
-    detail = scrape_service_page(
-        request.identity,
-        request.departureDate,
-        request.originCrs,
-        request.destinationCrs,
-        cookie,
-    )
-    detail["travelDate"] = request.travelDate
-
+    detail = request.detail.model_dump()
     saved_id = save_journey(detail, request.direction, request.reason, request.detailedReason, user_id)
-    return {"journeyId": saved_id, "detail": detail}
+    return {"journeyId": saved_id}
 
 
 @app.patch("/api/journeys/{journey_id}")
